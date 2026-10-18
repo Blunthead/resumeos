@@ -1,0 +1,617 @@
+/*
+  The resume document. Plain CSS (not Tailwind) on purpose: this exact file is
+  also sent to the server and printed to PDF, so it must be self-contained.
+  Everything is scoped under .rd, and the five templates are variations on the
+  same structure selected by [data-template].
+*/
+
+.rd {
+  --a: var(--rd-accent, #3d5a80);
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1f2937;
+  text-align: left;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.rd *,
+.rd *::before,
+.rd *::after {
+  box-sizing: border-box;
+}
+.rd h1,
+.rd h2,
+.rd p,
+.rd ul {
+  margin: 0;
+  padding: 0;
+}
+.rd ul {
+  list-style: none;
+}
+
+/* Header */
+.rd-name {
+  font-size: 25pt;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #111827;
+}
+.rd-jobtitle {
+  margin-top: 3px;
+  font-size: 12pt;
+  color: #4b5563;
+}
+.rd-contact {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: 9.5pt;
+  color: #4b5563;
+}
+
+/* Sections */
+.rd-section {
+  margin-top: 15px;
+}
+.rd-h {
+  break-after: avoid;
+  font-size: 11pt;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 7px;
+}
+.rd-text {
+  white-space: pre-line;
+}
+.rd-entry {
+  margin-bottom: 10px;
+}
+.rd-entry:last-child {
+  margin-bottom: 0;
+}
+.rd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  break-after: avoid;
+}
+.rd-strong {
+  font-weight: 700;
+  color: #111827;
+}
+.rd-meta {
+  font-size: 9.5pt;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.rd-sub {
+  color: #4b5563;
+  break-after: avoid;
+}
+.rd-list {
+  margin-top: 4px;
+}
+.rd-list li {
+  position: relative;
+  padding-left: 14px;
+  margin-top: 2px;
+}
+.rd-list li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.62em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+.rd-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+/* ---------- Modern ---------- */
+.rd[data-template="modern"] .rd-name {
+  font-size: 27pt;
+  letter-spacing: -0.5px;
+}
+.rd[data-template="modern"] .rd-jobtitle {
+  color: var(--a);
+  font-weight: 600;
+}
+.rd[data-template="modern"] .rd-h {
+  color: var(--a);
+  font-size: 9.5pt;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.rd[data-template="modern"] .rd-skills li {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 9.5pt;
+  background: color-mix(in srgb, var(--a) 11%, white);
+  color: #1f2937;
+}
+
+/* ---------- Classic ---------- */
+.rd[data-template="classic"] {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.rd[data-template="classic"] .rd-header {
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--a);
+}
+.rd[data-template="classic"] .rd-name {
+  font-size: 24pt;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.rd[data-template="classic"] .rd-contact {
+  justify-content: center;
+}
+.rd[data-template="classic"] .rd-h {
+  font-size: 10.5pt;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #9ca3af;
+}
+.rd[data-template="classic"] .rd-skills li:not(:last-child)::after {
+  content: ",";
+}
+
+/* ---------- Minimal ---------- */
+.rd[data-template="minimal"] {
+  line-height: 1.55;
+}
+.rd[data-template="minimal"] .rd-name {
+  font-size: 26pt;
+  font-weight: 300;
+  letter-spacing: 1px;
+}
+.rd[data-template="minimal"] .rd-jobtitle {
+  color: var(--a);
+  letter-spacing: 0.5px;
+}
+.rd[data-template="minimal"] .rd-section {
+  margin-top: 20px;
+}
+.rd[data-template="minimal"] .rd-h {
+  font-size: 8.5pt;
+  font-weight: 600;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.rd[data-template="minimal"] .rd-skills li:not(:last-child)::after {
+  content: "·";
+  margin-left: 6px;
+  color: #9ca3af;
+}
+
+/* ---------- Bold ---------- */
+.rd[data-template="bold"] .rd-header {
+  background: var(--a);
+  color: #fff;
+  padding: 18px 22px;
+  border-radius: 6px;
+}
+.rd[data-template="bold"] .rd-name {
+  color: #fff;
+  font-size: 26pt;
+}
+.rd[data-template="bold"] .rd-jobtitle,
+.rd[data-template="bold"] .rd-contact {
+  color: rgba(255, 255, 255, 0.9);
+}
+.rd[data-template="bold"] .rd-h {
+  padding-left: 9px;
+  border-left: 4px solid var(--a);
+  font-size: 11pt;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.rd[data-template="bold"] .rd-skills li {
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-size: 9.5pt;
+  border: 1px solid color-mix(in srgb, var(--a) 40%, white);
+}
+
+/* ---------- Compact ---------- */
+.rd[data-template="compact"] {
+  font-size: 9.5pt;
+  line-height: 1.38;
+}
+.rd[data-template="compact"] .rd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--a);
+}
+.rd[data-template="compact"] .rd-name {
+  font-size: 21pt;
+}
+.rd[data-template="compact"] .rd-jobtitle {
+  font-size: 10.5pt;
+  color: var(--a);
+  font-weight: 600;
+}
+.rd[data-template="compact"] .rd-contact {
+  margin-top: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-size: 9pt;
+}
+.rd[data-template="compact"] .rd-section {
+  margin-top: 11px;
+}
+.rd[data-template="compact"] .rd-h {
+  font-size: 9.5pt;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--a);
+  margin-bottom: 5px;
+}
+.rd[data-template="compact"] .rd-entry {
+  margin-bottom: 7px;
+}
+.rd[data-template="compact"] .rd-skills li:not(:last-child)::after {
+  content: " |";
+  margin-left: 4px;
+  color: #9ca3af;
+}
+
+/* ---------- Elegant ---------- */
+.rd[data-template="elegant"] .rd-header {
+  text-align: center;
+  padding-bottom: 12px;
+}
+.rd[data-template="elegant"] .rd-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 26pt;
+  font-weight: 400;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+.rd[data-template="elegant"] .rd-jobtitle {
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-size: 9.5pt;
+  color: var(--a);
+}
+.rd[data-template="elegant"] .rd-contact {
+  justify-content: center;
+  padding-top: 8px;
+  margin-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--a) 35%, white);
+}
+.rd[data-template="elegant"] .rd-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13pt;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--a);
+}
+.rd[data-template="elegant"] .rd-h::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--a) 35%, white);
+}
+.rd[data-template="elegant"] .rd-skills li:not(:last-child)::after {
+  content: "•";
+  margin-left: 6px;
+  color: var(--a);
+}
+
+/* ---------- Executive ---------- */
+.rd[data-template="executive"] {
+  font-family: Georgia, "Times New Roman", serif;
+}
+.rd[data-template="executive"] .rd-header {
+  padding-top: 12px;
+  border-top: 6px solid #111827;
+}
+.rd[data-template="executive"] .rd-name {
+  font-size: 27pt;
+  letter-spacing: 0.5px;
+}
+.rd[data-template="executive"] .rd-jobtitle {
+  font-style: italic;
+  color: var(--a);
+  font-size: 12.5pt;
+}
+.rd[data-template="executive"] .rd-h {
+  padding: 4px 10px;
+  background: #f3f4f6;
+  border-left: 3px solid var(--a);
+  font-size: 10pt;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+.rd[data-template="executive"] .rd-skills li:not(:last-child)::after {
+  content: ";";
+}
+
+/* ---------- Timeline ---------- */
+.rd[data-template="timeline"] .rd-name {
+  color: var(--a);
+}
+.rd[data-template="timeline"] .rd-h {
+  font-size: 10pt;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--a);
+}
+.rd[data-template="timeline"] .rd-entry {
+  position: relative;
+  padding-left: 18px;
+  padding-bottom: 2px;
+  border-left: 2px solid color-mix(in srgb, var(--a) 28%, white);
+  break-inside: avoid;
+}
+.rd[data-template="timeline"] .rd-entry::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--a);
+  border: 2px solid #fff;
+  box-sizing: content-box;
+  margin-left: -1px;
+}
+.rd[data-template="timeline"] .rd-skills li {
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 9.5pt;
+  background: color-mix(in srgb, var(--a) 10%, white);
+}
+
+/* ---------- Split ---------- */
+.rd[data-template="split"] .rd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.rd[data-template="split"] .rd-name {
+  font-size: 28pt;
+  color: var(--a);
+  letter-spacing: -0.5px;
+}
+.rd[data-template="split"] .rd-contact {
+  margin-top: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 3px solid var(--a);
+  font-size: 9.5pt;
+}
+.rd[data-template="split"] .rd-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10pt;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.rd[data-template="split"] .rd-h::before {
+  content: "";
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--a);
+}
+.rd[data-template="split"] .rd-skills li {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 9.5pt;
+  border: 1px solid color-mix(in srgb, var(--a) 45%, white);
+}
+
+/* ---------- Tech ---------- */
+.rd[data-template="tech"] .rd-name,
+.rd[data-template="tech"] .rd-contact,
+.rd[data-template="tech"] .rd-h,
+.rd[data-template="tech"] .rd-meta {
+  font-family: Consolas, "SFMono-Regular", Menlo, "Courier New", monospace;
+}
+.rd[data-template="tech"] .rd-name {
+  font-size: 23pt;
+  letter-spacing: -0.5px;
+}
+.rd[data-template="tech"] .rd-name::before {
+  content: "> ";
+  color: var(--a);
+}
+.rd[data-template="tech"] .rd-jobtitle {
+  color: var(--a);
+  font-weight: 600;
+}
+.rd[data-template="tech"] .rd-contact {
+  font-size: 9pt;
+}
+.rd[data-template="tech"] .rd-h {
+  font-size: 10pt;
+  text-transform: lowercase;
+  color: var(--a);
+  padding-bottom: 4px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+.rd[data-template="tech"] .rd-h::before {
+  content: "// ";
+  color: #9ca3af;
+}
+.rd[data-template="tech"] .rd-skills li {
+  padding: 1px 8px;
+  border-radius: 3px;
+  background: #f1f5f9;
+  font-family: Consolas, "SFMono-Regular", Menlo, "Courier New", monospace;
+  font-size: 9pt;
+}
+
+/* ---------- Academic ---------- */
+.rd[data-template="academic"] {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.4;
+}
+.rd[data-template="academic"] .rd-header {
+  text-align: center;
+}
+.rd[data-template="academic"] .rd-name {
+  font-size: 21pt;
+  font-variant: small-caps;
+  letter-spacing: 1px;
+  color: var(--a);
+}
+.rd[data-template="academic"] .rd-jobtitle {
+  font-style: italic;
+  font-size: 11.5pt;
+}
+.rd[data-template="academic"] .rd-contact {
+  justify-content: center;
+  font-size: 10pt;
+}
+.rd[data-template="academic"] .rd-h {
+  font-variant: small-caps;
+  font-size: 13pt;
+  letter-spacing: 0.6px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--a);
+}
+.rd[data-template="academic"] .rd-meta {
+  font-style: italic;
+  font-size: 10.5pt;
+}
+.rd[data-template="academic"] .rd-skills li:not(:last-child)::after {
+  content: ",";
+}
+
+/* ---------- Sidebar layouts (shared) ----------
+   The panel is the column element itself, not a page background, so it
+   repeats correctly on every page of a long resume. */
+.rd[data-layout="sidebar"] .rd-grid {
+  display: grid;
+  grid-template-columns: 62mm 1fr;
+  gap: 8mm;
+  min-height: 262mm;
+}
+.rd[data-layout="sidebar"] .rd-side {
+  align-self: stretch;
+  padding: 16px 14px;
+  border-radius: 8px;
+  min-width: 0;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-section:first-child {
+  margin-top: 0;
+}
+.rd[data-layout="sidebar"] .rd-main {
+  min-width: 0;
+}
+.rd[data-layout="sidebar"] .rd-name {
+  font-size: 25pt;
+}
+.rd[data-layout="sidebar"] .rd-main .rd-section:first-of-type {
+  margin-top: 18px;
+}
+.rd[data-layout="sidebar"] .rd-main .rd-h {
+  color: var(--a);
+  font-size: 10pt;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.rd[data-layout="sidebar"] .rd-jobtitle {
+  color: var(--a);
+  font-weight: 600;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-h {
+  color: inherit;
+  font-size: 9.5pt;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid currentColor;
+}
+.rd[data-layout="sidebar"] .rd-clist li {
+  margin-top: 4px;
+  font-size: 9.5pt;
+  overflow-wrap: anywhere;
+}
+.rd[data-layout="sidebar"] .rd-clist li:first-child {
+  margin-top: 0;
+}
+.rd[data-layout="sidebar"] .rd-skills {
+  flex-direction: column;
+  gap: 3px;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-row {
+  flex-direction: column;
+  gap: 0;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-meta {
+  white-space: normal;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-strong,
+.rd[data-layout="sidebar"] .rd-side .rd-sub,
+.rd[data-layout="sidebar"] .rd-side .rd-meta {
+  color: inherit;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-sub,
+.rd[data-layout="sidebar"] .rd-side .rd-meta {
+  opacity: 0.85;
+  font-size: 9.5pt;
+}
+
+/* Solid colour panel */
+.rd[data-template="sidebar"] .rd-side {
+  background: var(--a);
+  color: #fff;
+}
+.rd[data-template="sidebar"] .rd-side .rd-h {
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Soft tint panel */
+.rd[data-template="sidebar-soft"] .rd-side {
+  background: color-mix(in srgb, var(--a) 9%, white);
+  color: #1f2937;
+}
+.rd[data-template="sidebar-soft"] .rd-side .rd-h {
+  color: var(--a);
+  border-bottom-color: color-mix(in srgb, var(--a) 35%, white);
+}
+
+/* Dark panel */
+.rd[data-template="sidebar-dark"] .rd-side {
+  background: #111827;
+  color: #e5e7eb;
+}
+.rd[data-template="sidebar-dark"] .rd-side .rd-h {
+  color: color-mix(in srgb, var(--a) 45%, white);
+  border-bottom-color: #374151;
+}
