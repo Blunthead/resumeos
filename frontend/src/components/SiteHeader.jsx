@@ -2,11 +2,16 @@ import { Link } from 'react-router-dom'
 import { m, useScroll, useTransform } from 'motion/react'
 import PillLink from './landing/PillLink.jsx'
 
-export function Logo() {
+// The full wordmark on wider screens; the "ROS." monogram where space is tight.
+export function Logo({ className = '' }) {
   return (
-    <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
-      <span className="grid h-7 w-7 place-items-center rounded-lg bg-blue-600 text-sm font-bold text-white">R</span>
-      ResumeOS
+    <Link
+      to="/"
+      aria-label="ResumeOS home"
+      className={`font-brand text-[22px] font-medium leading-none tracking-[-0.02em] text-[#2f2f2f] transition-opacity hover:opacity-70 ${className}`}
+    >
+      <span className="sm:hidden">ROS.</span>
+      <span className="hidden sm:inline">ResumeOS.</span>
     </Link>
   )
 }

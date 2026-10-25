@@ -1,4 +1,9 @@
-<h1 align="center">ResumeOS</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg" />
+    <img src="docs/logo.svg" alt="ResumeOS" height="64" />
+  </picture>
+</h1>
 
 <p align="center">
   A simple resume builder. Pick a template, answer a few short questions, and download a clean PDF.<br />
