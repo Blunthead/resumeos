@@ -31,10 +31,15 @@
 
 ## Features
 
-- **14 templates** — 11 single-column layouts (Modern, Classic, Minimal, Bold, Compact, Elegant, Executive, Timeline, Split, Tech, Academic) and 3 sidebar layouts. Every template has an adjustable accent colour.
-- **Guided editor** — one short step at a time: Contact, Summary, Experience, Projects, Education, Skills, Certifications.
-- **Live preview** — the page next to the form is the resume itself, and it updates as you type.
-- **PDF download** — the PDF is made from the same HTML as the preview, rendered by a headless browser on the server.
+- **14 templates** — 11 single-column layouts (Modern, Classic, Minimal, Bold, Compact, Elegant, Executive, Timeline, Split, Tech, Academic) and 3 sidebar layouts. They share one type scale and spacing system, so they feel like one product.
+- **Guided editor** — Contact, Summary, Experience, Projects, Education, Skills, Certifications and Languages, one short step at a time.
+- **Click to edit** — click any part of the resume preview and the form jumps to that section and focuses its first field.
+- **Your own sections** — add Volunteer Work, Awards, Publications or anything else. Rename, duplicate, delete and reorder them like the built-in ones; they print in the PDF too.
+- **Rearrange everything** — drag sections and entries into a new order, or use the arrow buttons (which also work by keyboard and on touch screens).
+- **Text formatting** — bold, italic, underline, bulleted and numbered lists, with the usual shortcuts (Ctrl+B / I / U). Formatting is stored as plain markers, so it stays safe and ATS-friendly.
+- **Style** — pick a template and colour, and set text size and spacing for the whole document.
+- **Undo and redo** — Ctrl+Z / Ctrl+Shift+Z; typing is grouped into phrases, not letters.
+- **Live preview and PDF** — the PDF is printed from the same HTML as the preview, with the same fonts embedded, so they match.
 - **Autosave** — changes are saved as you go, including if you close the tab mid-edit, and retried automatically if the connection drops. You can keep up to 25 resumes.
 - **No account** — your browser gets a random guest id on first visit (see [Limitations](#limitations)).
 
@@ -129,6 +134,12 @@ The client sends the HTML it is previewing, so the PDF route amounts to "render 
 
 The API deploys to Railway from `server/Dockerfile` and the frontend to Vercel. Step-by-step in [docs/deployment.md](docs/deployment.md).
 
+## Fonts and the PDF
+
+The preview and the PDF use the same three typefaces: **Inter**, **Source Serif 4** and **JetBrains Mono** (all SIL OFL). The app loads them from `@fontsource`; the server embeds the very same files, as base64, into the HTML it prints, so the PDF never depends on what the host has installed. They are static weights on purpose: Chromium prints a variable font as Type 3 shapes, which have no reliable text layer, and that text layer is what applicant-tracking systems read. Bold italic has a real face too, for the same reason.
+
+Nothing in the stylesheet inserts text the user did not type (no decorative prefixes); the one exception is the separator between contact details and list items, which is drawn, not selectable text.
+
 ## Project layout
 
 ```
@@ -138,13 +149,14 @@ server/
     routes/             resumes.ts (CRUD), pdf.ts (export)
     middleware/         guest.ts (owner id), rateLimit.ts
     models/             Resume (Mongoose)
-    lib/                db.ts, resumeSchema.ts (the one source of validation)
+    lib/                db.ts, resumeSchema.ts (the one source of validation), fonts.ts, limiter.ts
+    assets/fonts/       the typefaces embedded into PDFs
   tests/                node:test unit tests
 frontend/
   src/
     pages/              Landing, Templates, Dashboard, Editor
     components/         ResumeDocument (the resume itself), PaperPreview, editor steps
-    lib/                api.js, resume.js (template list, sample data)
+    lib/                api.js, resume.js (templates, sample), richText.js, sections.js, history.js
 ```
 
 ## Performance notes
@@ -155,7 +167,7 @@ Opening a template is one request: the created resume is handed straight to the 
 
 - **Guest ids are not authentication.** Anyone who learns your id can read your resumes, and clearing your browser's storage loses access to them. The server isolates guests from each other, but it is a stand-in until real accounts exist, and swapping one in changes a single line in `middleware/guest.ts`.
 - **The three sidebar templates use two columns.** Some applicant tracking systems read multi-column layouts out of order. If that matters for a job, use one of the single-column templates.
-- **The PDF uses the server's fonts, the preview uses yours.** The resume CSS asks for Segoe UI, Georgia and Consolas. A Windows or Mac browser has them; the Linux server doesn't, so it substitutes metric-similar Liberation fonts. The typeface and some line breaks can therefore differ slightly between the on-screen preview and the downloaded PDF (measured: identical for the Modern and Tech samples, five lines wrapped differently in Classic, and more in the narrow Sidebar layout). Bundling the resume fonts would fix it.
+- **Right-to-left and non-Latin scripts.** Latin text uses the bundled fonts. Other scripts (Devanagari, Arabic, ...) use the server's fallback fonts, which the Docker image provides; Chinese, Japanese and Korean are not included, so they would print as empty boxes on the hosted version.
 - **Saves replace the whole resume.** If one resume is open in two tabs, the tab that saves last wins.
 - **The rate limiter is in memory**, so it is per server instance.
 

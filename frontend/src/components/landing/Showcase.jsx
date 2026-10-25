@@ -32,7 +32,7 @@ export default function Showcase() {
       <div className="sticky top-0 flex h-screen items-center overflow-hidden pt-16 md:pt-0">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 md:grid-cols-2 md:gap-16">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#0071e3]">Templates</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#0066cc]">Templates</p>
             <h2 className="mt-3 text-balance text-3xl font-semibold leading-[1.06] tracking-[-0.04em] text-[#1d1d1f] md:text-6xl">
               Same you.
               <br />
@@ -43,7 +43,7 @@ export default function Showcase() {
               {PICKS.map((t, i) => (
                 <m.li
                   key={t.id}
-                  animate={{ opacity: i === active ? 1 : 0.32 }}
+                  animate={{ opacity: i === active ? 1 : 0.65 }}
                   transition={{ duration: 0.5, ease: EASE }}
                   className="flex gap-4"
                 >

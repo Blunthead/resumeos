@@ -10,7 +10,7 @@ export default function Footer() {
           <span className="font-brand text-lg font-medium tracking-[-0.02em] text-[#2f2f2f]">ResumeOS.</span>
           <span>© {YEAR}</span>
         </p>
-        <nav className="flex items-center gap-6">
+        <nav aria-label="Footer" className="flex items-center gap-6">
           <Link to="/templates" className="hover:text-[#1d1d1f]">Templates</Link>
           <Link to="/resumes" className="hover:text-[#1d1d1f]">My resumes</Link>
           <a href="https://github.com/Blunthead/resumeos" className="hover:text-[#1d1d1f]" target="_blank" rel="noreferrer">

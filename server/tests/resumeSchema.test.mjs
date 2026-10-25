@@ -45,7 +45,7 @@ test("string and list length caps hold", () => {
         false,
     );
     assert.equal(
-        resumeDataSchema.safeParse({ skills: Array.from({ length: 61 }, (_, i) => `s${i}`) })
+        resumeDataSchema.safeParse({ skills: Array.from({ length: 101 }, (_, i) => `s${i}`) })
             .success,
         false,
     );

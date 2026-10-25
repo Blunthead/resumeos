@@ -220,3 +220,35 @@ describe("limits", () => {
         assert.equal((await call("/api/pdf", { method: "POST", guest: null, body: { html: "<p>x</p>" } })).status, 401);
     });
 });
+
+describe("custom sections over the API", () => {
+    test("a resume with custom sections, order, languages and style round-trips intact", async () => {
+        const id = (await create(GUEST_A)).json._id;
+        const data = {
+            custom: [{ id: "c1", title: "Volunteer Work \u{1F30D}", entries: [{ id: "e1", title: "Mentor", date: "2024", subtitle: "Code for Good", description: "- **Taught** 30 students\n- Ran a hackathon" }] }],
+            order: ["custom:c1", "summary", "experience"],
+            languages: ["English — Native", "हिन्दी — Fluent"],
+            style: { size: "lg", spacing: "relaxed" },
+        };
+        const put = await call(`/api/resumes/${id}`, { method: "PUT", body: { data } });
+        assert.equal(put.status, 200);
+        const read = (await call(`/api/resumes/${id}`)).json.data;
+        assert.deepEqual(read.custom, data.custom);
+        assert.deepEqual(read.order, data.order);
+        assert.deepEqual(read.languages, data.languages);
+        assert.deepEqual(read.style, data.style);
+    });
+
+    test("too many custom sections are refused with a 400", async () => {
+        const id = (await create(GUEST_A)).json._id;
+        const custom = Array.from({ length: 11 }, (_, i) => ({ id: `c${i}`, title: `S${i}`, entries: [] }));
+        assert.equal((await call(`/api/resumes/${id}`, { method: "PUT", body: { data: { custom } } })).status, 400);
+    });
+
+    test("a new resume starts with the new fields at their defaults", async () => {
+        const data = (await create(GUEST_A)).json.data;
+        assert.deepEqual(data.custom, []);
+        assert.deepEqual(data.languages, []);
+        assert.deepEqual(data.style, { size: "md", spacing: "normal" });
+    });
+});

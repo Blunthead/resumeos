@@ -16,7 +16,7 @@ const MAX_RESUMES = 25;
 
 // A guest id costs nothing to mint, so the per-guest cap above doesn't stop one
 // machine filling the database. This caps creation per IP instead.
-const limitCreates = rateLimit(60, 60 * 60_000, "ip");
+const limitCreates = rateLimit(Number(process.env.CREATE_LIMIT_PER_HOUR) || 60, 60 * 60_000, "ip");
 
 function validId(id: string | undefined): id is string {
     return !!id && mongoose.isValidObjectId(id);

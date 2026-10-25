@@ -3,15 +3,51 @@
   also sent to the server and printed to PDF, so it must be self-contained.
   Everything is scoped under .rd, and the templates are variations on the
   same structure selected by [data-template].
+
+  One system, many looks. Every template inherits the same type scale and
+  vertical rhythm from the tokens below and overrides only its identity:
+  header, headings, skills. That is what keeps spacing consistent across
+  templates, and it means the user's text-size and spacing settings (applied as
+  --rd-scale and --rd-mul on the root) work the same way in all of them.
+
+  ATS note: nothing here puts text into the page that the user didn't type
+  (no content: "//" or "> " prefixes), no tables, no positioned overlays.
+  Separators between list items are the one deliberate exception.
 */
 
 .rd {
   --a: var(--rd-accent, #3d5a80);
-  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-  font-size: 10.5pt;
-  line-height: 1.45;
-  color: #1f2937;
+
+  /* Type families. The names match the @fontsource packages the app bundles,
+     and the same files are embedded into the PDF on the server. */
+  --rd-sans: "Inter", "Segoe UI", Arial, Helvetica, sans-serif;
+  --rd-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --rd-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  --rd-font: var(--rd-sans);
+
+  /* Rhythm. All in em, so they follow the font size. --rd-mul is the user's
+     spacing setting (0.9 tight, 1 normal, 1.12 relaxed). */
+  --rd-size: 10pt;
+  --rd-lh: 1.5;
+  --rd-sec: calc(1.55em * var(--rd-mul, 1));
+  --rd-head: calc(0.6em * var(--rd-mul, 1));
+  --rd-entry: calc(0.95em * var(--rd-mul, 1));
+  --rd-item: calc(0.18em * var(--rd-mul, 1));
+
+  /* Ink. Body text and meta text both clear 4.5:1 contrast on white. */
+  --ink: #1f2937;
+  --ink-strong: #111827;
+  --ink-soft: #4b5563;
+  --ink-meta: #5b6472;
+  --rule: #e5e7eb;
+
+  font-family: var(--rd-font);
+  font-size: calc(var(--rd-size) * var(--rd-scale, 1));
+  line-height: calc(var(--rd-lh) * (1 + (var(--rd-mul, 1) - 1) * 0.5));
+  color: var(--ink);
   text-align: left;
+  font-kerning: normal;
+  font-variant-numeric: lining-nums;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -23,291 +59,408 @@
 .rd h1,
 .rd h2,
 .rd p,
-.rd ul {
+.rd ul,
+.rd ol {
   margin: 0;
   padding: 0;
 }
-.rd ul {
+.rd ul,
+.rd ol {
   list-style: none;
 }
-
-/* Header */
-.rd-name {
-  font-size: 25pt;
-  line-height: 1.1;
+.rd strong {
   font-weight: 700;
-  color: #111827;
+  color: var(--ink-strong);
+}
+.rd u {
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.16em;
+}
+
+/* ---------- Header ---------- */
+.rd-name {
+  font-size: 2.6em;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-strong);
+  overflow-wrap: break-word;
 }
 .rd-jobtitle {
-  margin-top: 3px;
-  font-size: 12pt;
-  color: #4b5563;
+  margin-top: 0.3em;
+  font-size: 1.2em;
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
 }
 .rd-contact {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  font-size: 9.5pt;
-  color: #4b5563;
+  margin-top: 0.75em;
+  font-size: 0.88em;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  /* Wrapped lines come out about the same length, rather than one long line
+     and a stray item on the next. */
+  text-wrap: balance;
+}
+/* Each item is one unbreakable unit; a very long one (a URL) may still break
+   so it can never run off the page. The mark follows its item, so a wrapped
+   line never starts with a stray one. */
+.rd-contact span {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+.rd-contact span:not(:last-child)::after {
+  content: var(--rd-sep, "•");
+  margin: 0 0.5em 0 0.55em;
+  opacity: 0.5;
 }
 
-/* Sections */
+/* ---------- Sections ---------- */
 .rd-section {
-  margin-top: 15px;
+  margin-top: var(--rd-sec);
 }
 .rd-h {
   break-after: avoid;
-  font-size: 11pt;
+  margin-bottom: var(--rd-head);
+  font-size: 0.95em;
+  line-height: 1.25;
   font-weight: 700;
-  color: #111827;
-  margin-bottom: 7px;
-}
-.rd-text {
-  white-space: pre-line;
+  color: var(--ink-strong);
 }
 .rd-entry {
-  margin-bottom: 10px;
+  break-inside: avoid;
 }
-.rd-entry:last-child {
-  margin-bottom: 0;
+.rd-entry + .rd-entry {
+  margin-top: var(--rd-entry);
 }
 .rd-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 0.15em 1.2em;
   break-after: avoid;
 }
 .rd-strong {
-  font-weight: 700;
-  color: #111827;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ink-strong);
+  overflow-wrap: break-word;
 }
 .rd-meta {
-  font-size: 9.5pt;
-  color: #6b7280;
+  flex-shrink: 0;
+  font-size: 0.92em;
+  color: var(--ink-meta);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+/* A link can be long, so unlike a date it is allowed to wrap. */
+.rd-link {
+  flex-shrink: 1;
+  max-width: 55%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-align: right;
 }
 .rd-sub {
-  color: #4b5563;
+  margin-top: 0.05em;
+  color: var(--ink-soft);
   break-after: avoid;
+  overflow-wrap: break-word;
+}
+
+/* ---------- Text and lists ---------- */
+.rd-text {
+  overflow-wrap: break-word;
+}
+.rd-text + .rd-text {
+  margin-top: 0.4em;
+}
+.rd-entry .rd-text,
+.rd-entry .rd-list {
+  margin-top: 0.35em;
 }
 .rd-list {
-  margin-top: 4px;
+  counter-reset: rd-n;
+}
+.rd-list + .rd-list,
+.rd-text + .rd-list,
+.rd-list + .rd-text {
+  margin-top: 0.4em;
 }
 .rd-list li {
   position: relative;
-  padding-left: 14px;
-  margin-top: 2px;
+  padding-left: 1.15em;
+  overflow-wrap: break-word;
+  break-inside: avoid;
+  orphans: 2;
+  widows: 2;
+}
+.rd-list li + li {
+  margin-top: var(--rd-item);
 }
 .rd-list li::before {
   content: "";
   position: absolute;
-  left: 3px;
-  top: 0.62em;
-  width: 4px;
-  height: 4px;
+  left: 0.2em;
+  top: 0.68em;
+  width: 0.3em;
+  height: 0.3em;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.7;
+  opacity: 0.65;
 }
+.rd-ol li {
+  padding-left: 1.55em;
+  counter-increment: rd-n;
+}
+.rd-ol li::before {
+  content: counter(rd-n) ".";
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Skills ---------- */
 .rd-skills {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 0.35em 0.45em;
+}
+.rd-skills li {
+  overflow-wrap: break-word;
 }
 
 /* ---------- Modern ---------- */
 .rd[data-template="modern"] .rd-name {
-  font-size: 27pt;
-  letter-spacing: -0.5px;
+  font-size: 2.75em;
+  letter-spacing: -0.025em;
 }
 .rd[data-template="modern"] .rd-jobtitle {
   color: var(--a);
   font-weight: 600;
 }
 .rd[data-template="modern"] .rd-h {
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--rule);
   color: var(--a);
-  font-size: 9.5pt;
-  letter-spacing: 1.4px;
+  font-size: 0.82em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #e5e7eb;
 }
 .rd[data-template="modern"] .rd-skills li {
-  padding: 2px 10px;
+  padding: 0.12em 0.8em;
   border-radius: 999px;
-  font-size: 9.5pt;
-  background: color-mix(in srgb, var(--a) 11%, white);
-  color: #1f2937;
+  font-size: 0.95em;
+  background: color-mix(in srgb, var(--a) 10%, white);
 }
 
 /* ---------- Classic ---------- */
 .rd[data-template="classic"] {
-  font-family: Georgia, "Times New Roman", serif;
+  --rd-font: var(--rd-serif);
+  --rd-size: 10.5pt;
+  --rd-sep: "|";
 }
 .rd[data-template="classic"] .rd-header {
-  text-align: center;
-  padding-bottom: 10px;
+  padding-bottom: 0.9em;
   border-bottom: 2px solid var(--a);
+  text-align: center;
 }
 .rd[data-template="classic"] .rd-name {
-  font-size: 24pt;
-  letter-spacing: 1px;
+  font-size: 2.3em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.rd[data-template="classic"] .rd-jobtitle {
+  font-style: italic;
+  font-weight: 400;
 }
 .rd[data-template="classic"] .rd-contact {
-  justify-content: center;
+  text-align: center;
 }
 .rd[data-template="classic"] .rd-h {
-  font-size: 10.5pt;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding-bottom: 3px;
+  padding-bottom: 0.3em;
   border-bottom: 1px solid #9ca3af;
+  font-size: 0.9em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.rd[data-template="classic"] .rd-skills {
+  display: block;
+}
+.rd[data-template="classic"] .rd-skills li {
+  display: inline;
 }
 .rd[data-template="classic"] .rd-skills li:not(:last-child)::after {
   content: ",";
+  margin-right: 0.3em;
 }
 
 /* ---------- Minimal ---------- */
 .rd[data-template="minimal"] {
-  line-height: 1.55;
+  --rd-lh: 1.62;
+  --rd-sec: calc(2em * var(--rd-mul, 1));
+  --rd-head: calc(0.75em * var(--rd-mul, 1));
+  --rd-sep: "·";
 }
 .rd[data-template="minimal"] .rd-name {
-  font-size: 26pt;
+  font-size: 2.6em;
   font-weight: 300;
-  letter-spacing: 1px;
+  letter-spacing: 0.01em;
 }
 .rd[data-template="minimal"] .rd-jobtitle {
   color: var(--a);
-  letter-spacing: 0.5px;
-}
-.rd[data-template="minimal"] .rd-section {
-  margin-top: 20px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 .rd[data-template="minimal"] .rd-h {
-  font-size: 8.5pt;
+  color: var(--ink-meta);
+  font-size: 0.78em;
   font-weight: 600;
-  letter-spacing: 2.2px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #9ca3af;
+}
+.rd[data-template="minimal"] .rd-skills {
+  display: block;
+}
+.rd[data-template="minimal"] .rd-skills li {
+  display: inline;
 }
 .rd[data-template="minimal"] .rd-skills li:not(:last-child)::after {
   content: "·";
-  margin-left: 6px;
-  color: #9ca3af;
+  margin: 0 0.55em;
+  color: var(--ink-meta);
 }
 
 /* ---------- Bold ---------- */
 .rd[data-template="bold"] .rd-header {
+  padding: 1.35em 1.7em;
+  border-radius: 0.5em;
   background: var(--a);
   color: #fff;
-  padding: 18px 22px;
-  border-radius: 6px;
 }
 .rd[data-template="bold"] .rd-name {
+  font-size: 2.6em;
   color: #fff;
-  font-size: 26pt;
 }
 .rd[data-template="bold"] .rd-jobtitle,
 .rd[data-template="bold"] .rd-contact {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
 }
 .rd[data-template="bold"] .rd-h {
-  padding-left: 9px;
-  border-left: 4px solid var(--a);
-  font-size: 11pt;
-  letter-spacing: 0.5px;
+  padding: 0.15em 0 0.15em 0.7em;
+  border-left: 0.3em solid var(--a);
+  font-size: 0.92em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .rd[data-template="bold"] .rd-skills li {
-  padding: 2px 9px;
-  border-radius: 4px;
-  font-size: 9.5pt;
+  padding: 0.1em 0.75em;
   border: 1px solid color-mix(in srgb, var(--a) 40%, white);
+  border-radius: 0.35em;
+  font-size: 0.95em;
 }
 
 /* ---------- Compact ---------- */
 .rd[data-template="compact"] {
-  font-size: 9.5pt;
-  line-height: 1.38;
+  --rd-size: 9.5pt;
+  --rd-lh: 1.42;
+  --rd-sec: calc(1.15em * var(--rd-mul, 1));
+  --rd-head: calc(0.45em * var(--rd-mul, 1));
+  --rd-entry: calc(0.7em * var(--rd-mul, 1));
+  --rd-item: calc(0.1em * var(--rd-mul, 1));
+  --rd-sep: "|";
 }
 .rd[data-template="compact"] .rd-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  gap: 16px;
-  padding-bottom: 8px;
+  justify-content: space-between;
+  gap: 1.5em;
+  padding-bottom: 0.8em;
   border-bottom: 2px solid var(--a);
 }
 .rd[data-template="compact"] .rd-name {
-  font-size: 21pt;
+  font-size: 2.2em;
 }
 .rd[data-template="compact"] .rd-jobtitle {
-  font-size: 10.5pt;
-  color: var(--a);
+  margin-top: 0.15em;
+  font-size: 1.1em;
   font-weight: 600;
+  color: var(--a);
 }
 .rd[data-template="compact"] .rd-contact {
   margin-top: 0;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  font-size: 9pt;
+  font-size: 0.92em;
+  text-align: right;
+  text-wrap: wrap;
 }
-.rd[data-template="compact"] .rd-section {
-  margin-top: 11px;
+.rd[data-template="compact"] .rd-contact span {
+  display: block;
+}
+.rd[data-template="compact"] .rd-contact span::after {
+  content: none !important;
 }
 .rd[data-template="compact"] .rd-h {
-  font-size: 9.5pt;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
   color: var(--a);
-  margin-bottom: 5px;
+  font-size: 0.9em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-.rd[data-template="compact"] .rd-entry {
-  margin-bottom: 7px;
+.rd[data-template="compact"] .rd-skills {
+  display: block;
+}
+.rd[data-template="compact"] .rd-skills li {
+  display: inline;
 }
 .rd[data-template="compact"] .rd-skills li:not(:last-child)::after {
-  content: " |";
-  margin-left: 4px;
-  color: #9ca3af;
+  content: "|";
+  margin: 0 0.5em;
+  color: var(--ink-meta);
 }
 
 /* ---------- Elegant ---------- */
 .rd[data-template="elegant"] .rd-header {
+  padding-bottom: 0.2em;
   text-align: center;
-  padding-bottom: 12px;
 }
 .rd[data-template="elegant"] .rd-name {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 26pt;
+  font-family: var(--rd-serif);
+  font-size: 2.5em;
   font-weight: 400;
-  letter-spacing: 4px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .rd[data-template="elegant"] .rd-jobtitle {
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  font-size: 9.5pt;
+  margin-top: 0.4em;
   color: var(--a);
+  font-size: 0.9em;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 .rd[data-template="elegant"] .rd-contact {
-  justify-content: center;
-  padding-top: 8px;
-  margin-top: 10px;
+  text-align: center;
+  margin-top: 0.9em;
+  padding-top: 0.8em;
   border-top: 1px solid color-mix(in srgb, var(--a) 35%, white);
 }
 .rd[data-template="elegant"] .rd-h {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 13pt;
-  font-weight: 400;
-  font-style: italic;
+  gap: 0.8em;
   color: var(--a);
+  font-family: var(--rd-serif);
+  font-size: 1.2em;
+  font-style: italic;
+  font-weight: 400;
 }
 .rd[data-template="elegant"] .rd-h::after {
   content: "";
@@ -315,39 +468,55 @@
   height: 1px;
   background: color-mix(in srgb, var(--a) 35%, white);
 }
+.rd[data-template="elegant"] .rd-skills {
+  display: block;
+}
+.rd[data-template="elegant"] .rd-skills li {
+  display: inline;
+}
 .rd[data-template="elegant"] .rd-skills li:not(:last-child)::after {
   content: "•";
-  margin-left: 6px;
+  margin: 0 0.6em;
   color: var(--a);
 }
 
 /* ---------- Executive ---------- */
 .rd[data-template="executive"] {
-  font-family: Georgia, "Times New Roman", serif;
+  --rd-font: var(--rd-serif);
+  --rd-size: 10.5pt;
+  --rd-head: calc(0.75em * var(--rd-mul, 1));
 }
 .rd[data-template="executive"] .rd-header {
-  padding-top: 12px;
-  border-top: 6px solid #111827;
+  padding-top: 1em;
+  border-top: 0.5em solid #111827;
 }
 .rd[data-template="executive"] .rd-name {
-  font-size: 27pt;
-  letter-spacing: 0.5px;
+  font-size: 2.7em;
+  letter-spacing: 0;
 }
 .rd[data-template="executive"] .rd-jobtitle {
-  font-style: italic;
   color: var(--a);
-  font-size: 12.5pt;
+  font-size: 1.2em;
+  font-style: italic;
+  font-weight: 500;
 }
 .rd[data-template="executive"] .rd-h {
-  padding: 4px 10px;
+  padding: 0.35em 0.8em;
+  border-left: 0.25em solid var(--a);
   background: #f3f4f6;
-  border-left: 3px solid var(--a);
-  font-size: 10pt;
-  letter-spacing: 1.8px;
+  font-size: 0.88em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+.rd[data-template="executive"] .rd-skills {
+  display: block;
+}
+.rd[data-template="executive"] .rd-skills li {
+  display: inline;
 }
 .rd[data-template="executive"] .rd-skills li:not(:last-child)::after {
   content: ";";
+  margin-right: 0.35em;
 }
 
 /* ---------- Timeline ---------- */
@@ -355,175 +524,209 @@
   color: var(--a);
 }
 .rd[data-template="timeline"] .rd-h {
-  font-size: 10pt;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
   color: var(--a);
+  font-size: 0.88em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 .rd[data-template="timeline"] .rd-entry {
   position: relative;
-  padding-left: 18px;
-  padding-bottom: 2px;
+  padding-left: 1.6em;
   border-left: 2px solid color-mix(in srgb, var(--a) 28%, white);
-  break-inside: avoid;
 }
 .rd[data-template="timeline"] .rd-entry::before {
   content: "";
   position: absolute;
-  left: -6px;
-  top: 5px;
-  width: 10px;
-  height: 10px;
+  left: -0.45em;
+  top: 0.4em;
+  width: 0.62em;
+  height: 0.62em;
+  border: 2px solid #fff;
   border-radius: 50%;
   background: var(--a);
-  border: 2px solid #fff;
   box-sizing: content-box;
   margin-left: -1px;
 }
 .rd[data-template="timeline"] .rd-skills li {
-  padding: 2px 10px;
-  border-radius: 4px;
-  font-size: 9.5pt;
+  padding: 0.12em 0.8em;
+  border-radius: 0.35em;
+  font-size: 0.95em;
   background: color-mix(in srgb, var(--a) 10%, white);
 }
 
 /* ---------- Split ---------- */
 .rd[data-template="split"] .rd-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #e5e7eb;
+  justify-content: space-between;
+  gap: 1.6em;
+  padding-bottom: 1.1em;
+  border-bottom: 1px solid var(--rule);
+}
+.rd[data-template="split"] .rd-id {
+  min-width: 0;
 }
 .rd[data-template="split"] .rd-name {
-  font-size: 28pt;
   color: var(--a);
-  letter-spacing: -0.5px;
+  font-size: 2.8em;
+  letter-spacing: -0.025em;
 }
 .rd[data-template="split"] .rd-contact {
+  flex-shrink: 0;
+  max-width: 45%;
   margin-top: 0;
-  flex-direction: column;
-  gap: 2px;
-  padding-left: 14px;
+  padding-left: 1em;
   border-left: 3px solid var(--a);
-  font-size: 9.5pt;
+  text-wrap: wrap;
+}
+.rd[data-template="split"] .rd-contact span {
+  display: block;
+}
+.rd[data-template="split"] .rd-contact span::after {
+  content: none !important;
 }
 .rd[data-template="split"] .rd-h {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 10pt;
-  letter-spacing: 1.4px;
+  gap: 0.6em;
+  font-size: 0.88em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .rd[data-template="split"] .rd-h::before {
   content: "";
-  width: 16px;
+  width: 1.4em;
   height: 3px;
   border-radius: 2px;
   background: var(--a);
 }
 .rd[data-template="split"] .rd-skills li {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 9.5pt;
+  padding: 0.1em 0.8em;
   border: 1px solid color-mix(in srgb, var(--a) 45%, white);
+  border-radius: 999px;
+  font-size: 0.95em;
 }
 
 /* ---------- Tech ---------- */
+.rd[data-template="tech"] {
+  --rd-sep: "/";
+}
 .rd[data-template="tech"] .rd-name,
 .rd[data-template="tech"] .rd-contact,
 .rd[data-template="tech"] .rd-h,
-.rd[data-template="tech"] .rd-meta {
-  font-family: Consolas, "SFMono-Regular", Menlo, "Courier New", monospace;
+.rd[data-template="tech"] .rd-meta,
+.rd[data-template="tech"] .rd-skills li {
+  font-family: var(--rd-mono);
+}
+.rd[data-template="tech"] .rd-header {
+  padding-left: 0.9em;
+  border-left: 0.3em solid var(--a);
 }
 .rd[data-template="tech"] .rd-name {
-  font-size: 23pt;
-  letter-spacing: -0.5px;
-}
-.rd[data-template="tech"] .rd-name::before {
-  content: "> ";
-  color: var(--a);
+  font-size: 2.2em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 .rd[data-template="tech"] .rd-jobtitle {
   color: var(--a);
   font-weight: 600;
 }
 .rd[data-template="tech"] .rd-contact {
-  font-size: 9pt;
+  font-size: 0.78em;
 }
 .rd[data-template="tech"] .rd-h {
-  font-size: 10pt;
-  text-transform: lowercase;
-  color: var(--a);
-  padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding-bottom: 0.4em;
   border-bottom: 1px dashed #cbd5e1;
+  color: var(--a);
+  font-size: 0.88em;
+  letter-spacing: 0;
+  text-transform: lowercase;
 }
 .rd[data-template="tech"] .rd-h::before {
-  content: "// ";
-  color: #9ca3af;
+  content: "";
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 1px;
+  background: var(--a);
+}
+.rd[data-template="tech"] .rd-meta {
+  font-size: 0.82em;
 }
 .rd[data-template="tech"] .rd-skills li {
-  padding: 1px 8px;
+  padding: 0.1em 0.65em;
   border-radius: 3px;
   background: #f1f5f9;
-  font-family: Consolas, "SFMono-Regular", Menlo, "Courier New", monospace;
-  font-size: 9pt;
+  font-size: 0.85em;
 }
 
 /* ---------- Academic ---------- */
 .rd[data-template="academic"] {
-  font-family: "Times New Roman", Times, serif;
-  font-size: 11pt;
-  line-height: 1.4;
+  --rd-font: var(--rd-serif);
+  --rd-size: 10.75pt;
+  --rd-lh: 1.45;
+  --rd-sep: "•";
 }
 .rd[data-template="academic"] .rd-header {
   text-align: center;
 }
 .rd[data-template="academic"] .rd-name {
-  font-size: 21pt;
-  font-variant: small-caps;
-  letter-spacing: 1px;
   color: var(--a);
+  font-size: 2.2em;
+  font-variant: small-caps;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 .rd[data-template="academic"] .rd-jobtitle {
+  font-size: 1.1em;
   font-style: italic;
-  font-size: 11.5pt;
+  font-weight: 400;
 }
 .rd[data-template="academic"] .rd-contact {
-  justify-content: center;
-  font-size: 10pt;
+  text-align: center;
 }
 .rd[data-template="academic"] .rd-h {
-  font-variant: small-caps;
-  font-size: 13pt;
-  letter-spacing: 0.6px;
-  padding-bottom: 2px;
+  padding-bottom: 0.2em;
   border-bottom: 1px solid var(--a);
+  font-size: 1.2em;
+  font-variant: small-caps;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 .rd[data-template="academic"] .rd-meta {
+  font-size: 0.95em;
   font-style: italic;
-  font-size: 10.5pt;
+}
+.rd[data-template="academic"] .rd-skills {
+  display: block;
+}
+.rd[data-template="academic"] .rd-skills li {
+  display: inline;
 }
 .rd[data-template="academic"] .rd-skills li:not(:last-child)::after {
   content: ",";
+  margin-right: 0.3em;
 }
 
 /* ---------- Sidebar layouts (shared) ----------
    The panel is the column element itself, not a page background, so it
-   repeats correctly on every page of a long resume. */
+   continues down every page of a long resume. */
 .rd[data-layout="sidebar"] .rd-grid {
   display: grid;
   grid-template-columns: 62mm 1fr;
   gap: 8mm;
-  min-height: 262mm;
+  /* An A4 page less the 14mm top and bottom print margins: the panel runs to
+     the foot of the page even when the content is short. */
+  min-height: 266mm;
 }
 .rd[data-layout="sidebar"] .rd-side {
   align-self: stretch;
-  padding: 16px 14px;
-  border-radius: 8px;
   min-width: 0;
+  padding: 1.5em 1.3em;
+  border-radius: 0.6em;
+  font-size: 0.95em;
 }
 .rd[data-layout="sidebar"] .rd-side .rd-section:first-child {
   margin-top: 0;
@@ -532,42 +735,50 @@
   min-width: 0;
 }
 .rd[data-layout="sidebar"] .rd-name {
-  font-size: 25pt;
-}
-.rd[data-layout="sidebar"] .rd-main .rd-section:first-of-type {
-  margin-top: 18px;
-}
-.rd[data-layout="sidebar"] .rd-main .rd-h {
-  color: var(--a);
-  font-size: 10pt;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #e5e7eb;
+  font-size: 2.5em;
 }
 .rd[data-layout="sidebar"] .rd-jobtitle {
   color: var(--a);
   font-weight: 600;
 }
-.rd[data-layout="sidebar"] .rd-side .rd-h {
-  color: inherit;
-  font-size: 9.5pt;
-  letter-spacing: 1.4px;
+.rd[data-layout="sidebar"] .rd-main .rd-header + .rd-section {
+  margin-top: calc(var(--rd-sec) * 1.2);
+}
+.rd[data-layout="sidebar"] .rd-main .rd-h {
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--rule);
+  color: var(--a);
+  font-size: 0.82em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding-bottom: 4px;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-h {
+  padding-bottom: 0.35em;
   border-bottom: 1px solid currentColor;
+  color: inherit;
+  font-size: 0.82em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.rd[data-layout="sidebar"] .rd-side .rd-section {
+  margin-top: calc(var(--rd-sec) * 0.95);
 }
 .rd[data-layout="sidebar"] .rd-clist li {
-  margin-top: 4px;
-  font-size: 9.5pt;
-  overflow-wrap: anywhere;
+  margin-top: 0.3em;
+  overflow-wrap: break-word;
 }
 .rd[data-layout="sidebar"] .rd-clist li:first-child {
   margin-top: 0;
 }
 .rd[data-layout="sidebar"] .rd-skills {
   flex-direction: column;
-  gap: 3px;
+  gap: 0.2em;
+}
+/* A long list would run the whole height of the panel, one skill a line.
+   Past fourteen, they wrap side by side instead. */
+.rd[data-layout="sidebar"] .rd-skills-many {
+  flex-direction: row;
+  gap: 0.2em 0.9em;
 }
 .rd[data-layout="sidebar"] .rd-side .rd-row {
   flex-direction: column;
@@ -578,13 +789,14 @@
 }
 .rd[data-layout="sidebar"] .rd-side .rd-strong,
 .rd[data-layout="sidebar"] .rd-side .rd-sub,
-.rd[data-layout="sidebar"] .rd-side .rd-meta {
+.rd[data-layout="sidebar"] .rd-side .rd-meta,
+.rd[data-layout="sidebar"] .rd-side strong {
   color: inherit;
 }
 .rd[data-layout="sidebar"] .rd-side .rd-sub,
 .rd[data-layout="sidebar"] .rd-side .rd-meta {
-  opacity: 0.85;
-  font-size: 9.5pt;
+  font-size: 0.95em;
+  opacity: 0.88;
 }
 
 /* Solid colour panel */
@@ -599,11 +811,11 @@
 /* Soft tint panel */
 .rd[data-template="sidebar-soft"] .rd-side {
   background: color-mix(in srgb, var(--a) 9%, white);
-  color: #1f2937;
+  color: var(--ink);
 }
 .rd[data-template="sidebar-soft"] .rd-side .rd-h {
-  color: var(--a);
   border-bottom-color: color-mix(in srgb, var(--a) 35%, white);
+  color: var(--a);
 }
 
 /* Dark panel */
@@ -612,6 +824,6 @@
   color: #e5e7eb;
 }
 .rd[data-template="sidebar-dark"] .rd-side .rd-h {
-  color: color-mix(in srgb, var(--a) 45%, white);
   border-bottom-color: #374151;
+  color: color-mix(in srgb, var(--a) 45%, white);
 }

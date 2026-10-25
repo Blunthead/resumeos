@@ -1,12 +1,16 @@
-import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 import PaperPreview from '../components/PaperPreview.jsx'
 import ResumeDocument from '../components/ResumeDocument.jsx'
-import { STEPS } from '../components/editor/stepList.js'
+import SectionsPanel from '../components/editor/SectionsPanel.jsx'
+import StylePanel from '../components/editor/StylePanel.jsx'
+import { Redo, Undo } from '../components/editor/icons.jsx'
+import { buildSteps } from '../components/editor/stepList.js'
 import { api } from '../lib/api.js'
+import { createHistory } from '../lib/history.js'
 import { handoff } from '../lib/handoff.js'
-import { ACCENTS, SAMPLE, TEMPLATES, accentOf, isEmptyResume } from '../lib/resume.js'
+import { SAMPLE, accentOf, isEmptyResume, normalizeData } from '../lib/resume.js'
 import documentCss from '../components/resumeDocument.css?raw'
 
 const DEFAULT_TITLE = 'Untitled resume'
@@ -19,6 +23,37 @@ const SAVE_LABEL = {
   failed: "Couldn't save — try reloading the page",
 }
 
+// The serif and monospace templates use fonts that are only fetched when
+// something uses them. Asking for them when the style panel opens means a
+// template switch never flashes in the wrong typeface.
+const TEMPLATE_FONTS = [
+  '400 1em "Source Serif 4"',
+  '600 1em "Source Serif 4"',
+  '700 1em "Source Serif 4"',
+  'italic 400 1em "Source Serif 4"',
+  'italic 700 1em "Source Serif 4"',
+  '400 1em "JetBrains Mono"',
+  '600 1em "JetBrains Mono"',
+  '700 1em "JetBrains Mono"',
+  'italic 400 1em "JetBrains Mono"',
+]
+
+// The parts of a resume an undo step restores.
+const snapshotOf = ({ title, template, accent, data }) => ({ title, template, accent, data })
+
+// A cheap fingerprint of everything that is a structural change rather than
+// typing: what exists and in what order. Typing inside a field changes none of
+// it, so Undo can group typing into phrases and keep add, remove and reorder
+// as steps of their own.
+function shapeOf(d) {
+  const list = (items) => items.map((i) => i.id).join(',')
+  return [
+    list(d.experience), list(d.education), list(d.projects),
+    d.skills.join('|'), d.certifications.join('|'), d.languages.join('|'),
+    d.order.join(','), d.custom.map((c) => `${c.id}:${list(c.entries)}`).join(';'),
+  ].join('#')
+}
+
 // Keyed by id so opening a different resume always starts from a clean slate.
 export default function EditorPage() {
   const { id } = useParams()
@@ -29,14 +64,21 @@ function Editor({ id }) {
   const navigate = useNavigate()
   // A resume that was just created arrives with the click that made it, so the
   // editor opens at once instead of asking the server for it again.
-  const [resume, setResume] = useState(() => handoff.peek(id))
+  const [resume, setResume] = useState(() => {
+    const created = handoff.peek(id)
+    return created && { ...created, data: normalizeData(created.data) }
+  })
   const [status, setStatus] = useState(resume ? 'ready' : 'loading') // loading | ready | missing | error
   const [loadError, setLoadError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [saveState, setSaveState] = useState('saved')
-  const [step, setStep] = useState(0)
+  const [activeKey, setActiveKey] = useState('contact')
+  const [focusTick, setFocusTick] = useState(0)
   const [tab, setTab] = useState('edit') // phones show one pane at a time
   const [showStyle, setShowStyle] = useState(false)
+  const [showSections, setShowSections] = useState(false)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState('')
 
@@ -45,7 +87,11 @@ function Editor({ id }) {
   const timer = useRef(null)
   const queue = useRef(Promise.resolve())
   const retry = useRef({ timer: null, count: 0, stopped: false, run: null })
+  const history = useRef(createHistory())
   const previewRef = useRef(null)
+  const formRef = useRef(null)
+  const styleRef = useRef(null)
+  const actions = useRef({})
 
   useEffect(() => {
     handoff.drop(id)
@@ -53,8 +99,9 @@ function Editor({ id }) {
     let cancelled = false
     api
       .getResume(id)
-      .then((r) => {
+      .then((loaded) => {
         if (cancelled) return
+        const r = { ...loaded, data: normalizeData(loaded.data) }
         latest.current = r
         setResume(r)
         setStatus('ready')
@@ -140,17 +187,60 @@ function Editor({ id }) {
     }
   }, [save])
 
-  function change(patch) {
-    const next = { ...latest.current, ...patch }
+  // The tabs follow the sections' order and titles. If the open section was
+  // deleted, its tab is gone and the first one is shown instead.
+  const custom = resume?.data.custom
+  const order = resume?.data.order
+  const steps = useMemo(() => (custom ? buildSteps({ custom, order }) : []), [custom, order])
+  const stepIndex = Math.max(0, steps.findIndex((s) => s.key === activeKey))
+  const currentKey = steps[stepIndex]?.key ?? 'contact'
+
+  const syncHistory = () => {
+    setCanUndo(history.current.canUndo)
+    setCanRedo(history.current.canRedo)
+  }
+
+  // Puts a new state on screen and schedules its save. Every edit, and every
+  // undo and redo, goes through here.
+  function apply(next) {
     latest.current = next
     setResume(next)
     dirty.current = true
     setSaveState('dirty')
     clearTimeout(timer.current)
     timer.current = setTimeout(save, 800)
+    syncHistory()
   }
 
-  const changeData = (fn) => change({ data: fn(latest.current.data) })
+  // `key` names the field being typed in, so a burst of typing is one undo step.
+  function change(patch, key = null) {
+    history.current.record(snapshotOf(latest.current), { key })
+    apply({ ...latest.current, ...patch })
+  }
+
+  const changeData = (fn) => {
+    const prev = latest.current.data
+    const data = fn(prev)
+    const typing = shapeOf(prev) === shapeOf(data)
+    change({ data }, typing ? `data:${currentKey}` : null)
+  }
+
+  const undo = () => {
+    const before = history.current.undo(snapshotOf(latest.current))
+    if (before) apply({ ...latest.current, ...before })
+  }
+  const redo = () => {
+    const after = history.current.redo(snapshotOf(latest.current))
+    if (after) apply({ ...latest.current, ...after })
+  }
+  const saveNow = () => {
+    clearTimeout(timer.current)
+    void save()
+  }
+  // Read by the shortcut listener below, which is attached only once.
+  useEffect(() => {
+    actions.current = { undo, redo, saveNow }
+  })
 
   // Each template has a signature colour. Moving to another template takes its
   // colour too, unless the user picked their own, which we never overwrite.
@@ -159,6 +249,64 @@ function Editor({ id }) {
     const usingDefault = accent.toLowerCase() === accentOf(template).toLowerCase()
     change(usingDefault ? { template: next.id, accent: next.accent } : { template: next.id })
   }
+
+  const setStyle = (patch) => changeData((d) => ({ ...d, style: { ...d.style, ...patch } }))
+
+  // Moves the form to a section and, with a mouse, into its first field.
+  const openSection = useCallback((key) => {
+    setActiveKey(key)
+    setTab('edit')
+    setFocusTick((n) => n + 1)
+  }, [])
+
+  // After a section is opened from the preview or a tab: scroll the form to the
+  // top and, if there is a mouse, put the cursor in its first field. On a phone
+  // that would raise the keyboard uninvited, so it is skipped there.
+  useEffect(() => {
+    if (!focusTick) return undefined
+    const frame = requestAnimationFrame(() => {
+      const form = formRef.current
+      if (!form) return
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      form.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' })
+      if (window.matchMedia('(pointer: fine)').matches) {
+        form.querySelector('[data-step-form] input, [data-step-form] textarea')?.focus({ preventScroll: true })
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [focusTick])
+
+  // Shortcuts. They go through `actions` so this listener is attached once.
+  useEffect(() => {
+    const onKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey
+      const key = e.key.toLowerCase()
+      if (mod && key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) actions.current.redo()
+        else actions.current.undo()
+      } else if (mod && key === 'y') {
+        e.preventDefault()
+        actions.current.redo()
+      } else if (mod && key === 's') {
+        e.preventDefault()
+        actions.current.saveNow()
+      } else if (e.key === 'Escape') {
+        setShowStyle(false)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  // The style panel closes when you click anywhere else, and warms the fonts.
+  useEffect(() => {
+    if (!showStyle) return undefined
+    TEMPLATE_FONTS.forEach((font) => document.fonts?.load(font, 'Aa').catch(() => {}))
+    const onDown = (e) => !styleRef.current?.contains(e.target) && setShowStyle(false)
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [showStyle])
 
   async function download() {
     const el = previewRef.current?.querySelector('.rd')
@@ -230,83 +378,61 @@ function Editor({ id }) {
   }
 
   const empty = isEmptyResume(resume.data)
-  const current = STEPS[step]
+  const current = steps[stepIndex]
   const StepForm = current.Component
-  const isLast = step === STEPS.length - 1
+  const isLast = stepIndex === steps.length - 1
+  const iconBtn =
+    'grid h-9 w-9 place-items-center rounded-lg text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600 disabled:opacity-30 disabled:hover:bg-transparent'
 
   return (
     <div className="flex h-screen flex-col">
       {/* Top bar */}
-      <header className="relative z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+      <header className="relative z-20 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
         <Logo />
         <input
           aria-label="Resume name"
           value={resume.title}
-          onChange={(e) => change({ title: e.target.value.slice(0, 100) })}
+          onChange={(e) => change({ title: e.target.value.slice(0, 100) }, 'title')}
           onBlur={() => !resume.title.trim() && change({ title: DEFAULT_TITLE })}
-          className="ml-2 hidden w-56 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-blue-400 focus:outline-none sm:block"
+          className="ml-2 hidden w-36 min-w-0 rounded-lg border border-transparent lg:w-56 px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-blue-400 focus:outline-none sm:block"
         />
         <span
-          className={`ml-auto hidden text-xs md:block ${saveState === 'error' || saveState === 'failed' ? 'text-red-600' : 'text-slate-500'}`}
+          className={`ml-auto hidden whitespace-nowrap text-xs md:block ${saveState === 'error' || saveState === 'failed' ? 'text-red-600' : 'text-slate-600'}`}
           role="status"
         >
           {SAVE_LABEL[saveState]}
         </span>
+        <div className="ml-auto flex items-center md:ml-0">
+          <button type="button" onClick={undo} disabled={!canUndo} className={iconBtn} aria-label="Undo" title="Undo (Ctrl+Z)">
+            <Undo />
+          </button>
+          <button type="button" onClick={redo} disabled={!canRedo} className={iconBtn} aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+            <Redo />
+          </button>
+        </div>
+        <div ref={styleRef} className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setShowStyle((s) => !s)}
+            className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600"
+            aria-expanded={showStyle}
+            aria-haspopup="dialog"
+          >
+            Style
+          </button>
+          {showStyle && (
+            <StylePanel resume={resume} onTemplate={switchTemplate} onAccent={(accent) => change({ accent })} onStyle={setStyle} />
+          )}
+        </div>
         <button
-          onClick={() => setShowStyle((s) => !s)}
-          className="ml-auto whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 md:ml-0"
-          aria-expanded={showStyle}
-        >
-          Style
-        </button>
-        <button
+          type="button"
           onClick={download}
           disabled={downloading || empty}
           title={empty ? 'Add something to your resume first' : undefined}
-          className="whitespace-nowrap rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          className="whitespace-nowrap rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-60 sm:px-4"
         >
           {downloading ? 'Preparing…' : 'Download PDF'}
         </button>
-
-        {showStyle && (
-          <div className="rise absolute right-4 top-full mt-2 w-[min(92vw,26rem)] rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200">
-            <p className="mb-2 text-sm font-semibold text-slate-700">Template</p>
-            <div className="grid max-h-[55vh] grid-cols-4 gap-x-2 gap-y-3 overflow-y-auto p-1">
-              {TEMPLATES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => switchTemplate(t)}
-                  aria-pressed={resume.template === t.id}
-                  className="text-center"
-                >
-                  <span
-                    className={`block overflow-hidden rounded-md ring-2 ${
-                      resume.template === t.id ? 'ring-blue-500' : 'ring-slate-200 hover:ring-slate-300'
-                    }`}
-                  >
-                    <PaperPreview clip>
-                      <ResumeDocument data={SAMPLE} template={t.id} accent={t.accent} />
-                    </PaperPreview>
-                  </span>
-                  <span className="mt-1 block truncate text-[11px] font-medium text-slate-600">{t.name}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mb-2 mt-4 text-sm font-semibold text-slate-700">Colour</p>
-            <div className="flex flex-wrap gap-2.5">
-              {ACCENTS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => change({ accent: c })}
-                  aria-label={`Colour ${c}`}
-                  aria-pressed={resume.accent === c}
-                  className={`h-8 w-8 rounded-full ring-offset-2 ${resume.accent === c ? 'ring-2 ring-slate-900' : ''}`}
-                  style={{ background: c }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </header>
 
       {downloadError && (
@@ -316,13 +442,16 @@ function Editor({ id }) {
       )}
 
       {/* Phone: switch between editing and previewing */}
-      <div className="flex border-b border-slate-200 bg-white lg:hidden">
+      <div className="flex border-b border-slate-200 bg-white lg:hidden" role="tablist" aria-label="Editor view">
         {['edit', 'preview'].map((t) => (
           <button
             key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2.5 text-sm font-semibold capitalize ${
-              tab === t ? 'border-b-2 border-blue-600 text-blue-700' : 'text-slate-500'
+              tab === t ? 'border-b-2 border-blue-600 text-blue-700' : 'text-slate-600'
             }`}
           >
             {t}
@@ -330,44 +459,65 @@ function Editor({ id }) {
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,28rem)_1fr] xl:grid-cols-[minmax(0,32rem)_1fr]">
+      <main className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,28rem)_1fr] xl:grid-cols-[minmax(0,32rem)_1fr]">
         {/* Form */}
-        <section className={`min-h-0 overflow-y-auto bg-white lg:border-r lg:border-slate-200 ${tab === 'edit' ? '' : 'hidden lg:block'}`}>
+        <section
+          ref={formRef}
+          aria-label="Edit your resume"
+          className={`min-h-0 overflow-y-auto bg-white lg:border-r lg:border-slate-200 ${tab === 'edit' ? '' : 'hidden lg:block'}`}
+        >
           <div className="px-5 py-6">
-            <ol className="mb-6 flex flex-wrap gap-1.5">
-              {STEPS.map((s, i) => (
-                <li key={s.id}>
+            <nav aria-label="Resume sections" className="mb-6">
+              <ol className="flex flex-wrap gap-1.5">
+                {steps.map((s, i) => (
+                  <li key={s.key} className="max-w-full">
+                    <button
+                      type="button"
+                      onClick={() => openSection(s.key)}
+                      aria-current={i === stepIndex ? 'step' : undefined}
+                      className={`max-w-[11rem] truncate rounded-full px-3 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                        i === stepIndex ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {s.title}
+                    </button>
+                  </li>
+                ))}
+                <li>
                   <button
-                    onClick={() => setStep(i)}
-                    aria-current={i === step ? 'step' : undefined}
-                    className={`rounded-full px-3 py-1 text-sm font-medium ${
-                      i === step
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    type="button"
+                    onClick={() => setShowSections((s) => !s)}
+                    aria-expanded={showSections}
+                    className={`rounded-full border border-dashed px-3 py-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                      showSections ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-slate-400 text-slate-700 hover:border-blue-500 hover:text-blue-800'
                     }`}
                   >
-                    {s.title}
+                    + Sections
                   </button>
                 </li>
-              ))}
-            </ol>
+              </ol>
+            </nav>
 
-            <div key={current.id} className="rise">
+            {showSections && <SectionsPanel data={resume.data} onData={changeData} onOpen={openSection} />}
+
+            <div key={current.key} className="rise" data-step-form>
               <h1 className="text-2xl font-bold tracking-tight">{current.title}</h1>
               <p className="mb-5 mt-1 text-slate-600">{current.hint}</p>
-              <StepForm data={resume.data} onData={changeData} />
+              <StepForm data={resume.data} onData={changeData} onOpen={openSection} sectionId={current.sectionId} />
             </div>
 
             <div className="mt-8 flex items-center justify-between">
               <button
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-                disabled={step === 0}
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:invisible"
+                type="button"
+                onClick={() => openSection(steps[Math.max(0, stepIndex - 1)].key)}
+                disabled={stepIndex === 0}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:invisible"
               >
                 Back
               </button>
               {isLast ? (
                 <button
+                  type="button"
                   onClick={download}
                   disabled={downloading || empty}
                   className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
@@ -376,39 +526,50 @@ function Editor({ id }) {
                 </button>
               ) : (
                 <button
-                  onClick={() => setStep((s) => s + 1)}
-                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  type="button"
+                  onClick={() => openSection(steps[stepIndex + 1].key)}
+                  className="max-w-[60%] truncate rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  Next: {STEPS[step + 1].title}
+                  Next: {steps[stepIndex + 1].title}
                 </button>
               )}
             </div>
-            <p className="mt-6 text-center text-xs text-slate-400">
-              <Link to="/resumes" className="hover:text-slate-600">Back to my resumes</Link>
+            <p className="mt-6 text-center text-xs text-slate-600">
+              <Link to="/resumes" className="underline-offset-2 hover:text-slate-900 hover:underline">
+                Back to my resumes
+              </Link>
             </p>
           </div>
         </section>
 
         {/* Live preview */}
-        <section className={`min-h-0 overflow-y-auto bg-slate-100 p-4 sm:p-8 ${tab === 'preview' ? '' : 'hidden lg:block'}`}>
+        <section
+          aria-label="Resume preview"
+          tabIndex={0}
+          className={`min-h-0 overflow-y-auto bg-slate-100 p-4 sm:p-8 ${tab === 'preview' ? '' : 'hidden lg:block'}`}
+        >
           <div className="mx-auto max-w-[46rem]">
-            {empty && (
-              <p className="mb-3 text-center text-sm text-slate-500">
-                This is a sample. Start typing and it becomes yours.
-              </p>
-            )}
-            <div ref={previewRef} className="overflow-hidden rounded-lg shadow-lg ring-1 ring-slate-200">
+            <p className="mb-3 text-center text-sm text-slate-600">
+              {empty ? 'This is a sample. Start typing and it becomes yours.' : 'Click any part of your resume to edit it.'}
+            </p>
+            {/* Marks the section being edited. It lives beside the preview, not
+                inside the document, so it never reaches the PDF. */}
+            <style>{`.rd-preview [data-section=${JSON.stringify(current.key)}]{outline-color:rgba(0,113,227,.6)!important;background-color:rgba(0,113,227,.04)}`}</style>
+            <div
+              ref={previewRef}
+              onClick={(e) => {
+                const hit = e.target.closest('[data-section]')
+                if (hit) openSection(hit.dataset.section)
+              }}
+              className="rd-preview overflow-hidden rounded-lg shadow-lg ring-1 ring-slate-200"
+            >
               <PaperPreview>
-                <ResumeDocument
-                  data={previewData}
-                  template={resume.template}
-                  accent={resume.accent}
-                />
+                <ResumeDocument data={previewData} template={resume.template} accent={resume.accent} />
               </PaperPreview>
             </div>
           </div>
         </section>
-      </div>
+      </main>
     </div>
   )
 }

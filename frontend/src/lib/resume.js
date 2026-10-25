@@ -26,7 +26,7 @@ export const ACCENTS = ['#3d5a80', '#1f2937', '#52606d', '#6d4553', '#3f6b66', '
 
 export const accentOf = (templateId) => TEMPLATES.find((t) => t.id === templateId)?.accent ?? '#3d5a80'
 
-const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
+export const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 
 export const blankExperience = () => ({
   id: newId(), role: '', company: '', location: '', startDate: '', endDate: '', description: '',
@@ -35,13 +35,44 @@ export const blankEducation = () => ({
   id: newId(), degree: '', school: '', location: '', startDate: '', endDate: '', details: '',
 })
 export const blankProject = () => ({ id: newId(), name: '', link: '', description: '' })
+export const blankCustomEntry = () => ({ id: newId(), title: '', subtitle: '', date: '', description: '' })
+export const blankCustomSection = (title = '') => ({ id: newId(), title, entries: [blankCustomEntry()] })
 
-// One bullet per line; tolerate people pasting their own "-" or "•".
-export function toBullets(text) {
-  return (text || '')
-    .split('\n')
-    .map((line) => line.replace(/^\s*[-•*–]\s*/, '').trim())
-    .filter(Boolean)
+// Limits mirror server/src/lib/resumeSchema.ts. The server rejects anything
+// over them, so the editor enforces them up front instead of failing a save.
+export const LIMITS = { skills: 100, certifications: 30, languages: 20, customSections: 10, customEntries: 30 }
+
+export const STYLE_SIZES = [
+  { id: 'sm', label: 'Small' },
+  { id: 'md', label: 'Medium' },
+  { id: 'lg', label: 'Large' },
+]
+export const STYLE_SPACINGS = [
+  { id: 'tight', label: 'Tight' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'relaxed', label: 'Relaxed' },
+]
+
+// Resumes saved before custom sections, languages or style existed lack those
+// fields. Filling the gaps on load means no component ever has to check.
+export function normalizeData(data = {}) {
+  const c = data.contact ?? {}
+  return {
+    contact: {
+      fullName: c.fullName ?? '', jobTitle: c.jobTitle ?? '', email: c.email ?? '', phone: c.phone ?? '',
+      location: c.location ?? '', website: c.website ?? '', linkedin: c.linkedin ?? '',
+    },
+    summary: data.summary ?? '',
+    experience: data.experience ?? [],
+    education: data.education ?? [],
+    projects: data.projects ?? [],
+    skills: data.skills ?? [],
+    certifications: data.certifications ?? [],
+    languages: data.languages ?? [],
+    custom: data.custom ?? [],
+    order: data.order ?? [],
+    style: { size: data.style?.size ?? 'md', spacing: data.style?.spacing ?? 'normal' },
+  }
 }
 
 export function isEmptyResume(data) {
@@ -53,7 +84,9 @@ export function isEmptyResume(data) {
     !data.education.length &&
     !data.projects.length &&
     !data.skills.length &&
-    !data.certifications.length
+    !data.certifications.length &&
+    !data.languages.length &&
+    !data.custom.some((section) => section.title.trim() || section.entries.length)
   )
 }
 
@@ -98,7 +131,7 @@ export const SAMPLE = {
       startDate: 'May 2019',
       endDate: 'Aug 2019',
       description:
-        'Built an internal dashboard used daily by 60 support agents\nAutomated a weekly report that saved the team 5 hours every week',
+        'Built an internal dashboard used daily by 60 support agents',
     },
   ],
   projects: [
@@ -107,7 +140,7 @@ export const SAMPLE = {
       name: 'Trailmap',
       link: 'github.com/alexmorgan/trailmap',
       description:
-        'Open-source hiking route planner with 1,200+ GitHub stars\nBuilt with React, Node.js and PostGIS; used by 8,000 hikers a month',
+        'Open-source hiking route planner with 1,200+ GitHub stars',
     },
   ],
   education: [
@@ -136,4 +169,8 @@ export const SAMPLE = {
     'CI/CD',
   ],
   certifications: ['AWS Certified Developer – Associate', 'Certified Scrum Master'],
+  languages: [],
+  custom: [],
+  order: [],
+  style: { size: 'md', spacing: 'normal' },
 }

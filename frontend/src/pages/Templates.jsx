@@ -95,10 +95,10 @@ export default function Templates() {
               key={t.id}
               onClick={() => choose(t)}
               disabled={busy !== null}
-              className="rise group text-left disabled:opacity-60"
+              className="rise group min-w-0 text-left disabled:opacity-60"
               style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
             >
-              <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 group-hover:shadow-lg group-hover:ring-blue-300 group-focus-visible:ring-2 group-focus-visible:ring-blue-500">
+              <div aria-hidden="true" className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 group-hover:shadow-lg group-hover:ring-blue-300 group-focus-visible:ring-2 group-focus-visible:ring-blue-500">
                 <LazyPaper>
                   <PaperPreview clip>
                     <ResumeDocument data={SAMPLE} template={t.id} accent={t.accent} />

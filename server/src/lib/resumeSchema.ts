@@ -6,6 +6,29 @@ const short = z.string().max(200).default("");
 const long = z.string().max(5000).default("");
 const id = z.string().min(1).max(64);
 
+const customEntry = z.object({
+    id,
+    title: short,
+    subtitle: short,
+    date: short,
+    description: long,
+});
+
+const customSection = z.object({
+    id,
+    title: z.string().max(60).default(""),
+    entries: z.array(customEntry).max(30).default([]),
+});
+
+// Document-wide look: text size and line spacing, applied by the stylesheet so
+// the preview and the PDF can't disagree.
+const styleSchema = z
+    .object({
+        size: z.enum(["sm", "md", "lg"]).default("md"),
+        spacing: z.enum(["tight", "normal", "relaxed"]).default("normal"),
+    })
+    .default({ size: "md", spacing: "normal" });
+
 export const resumeDataSchema = z.object({
     contact: z
         .object({
@@ -59,8 +82,17 @@ export const resumeDataSchema = z.object({
         .array(z.object({ id, name: short, link: short, description: long }))
         .max(20)
         .default([]),
-    skills: z.array(z.string().max(60)).max(60).default([]),
+    skills: z.array(z.string().max(60)).max(100).default([]),
     certifications: z.array(z.string().max(200)).max(30).default([]),
+    languages: z.array(z.string().max(100)).max(20).default([]),
+    // Sections the user adds themselves (Volunteer Work, Awards...). Each is a
+    // titled list of entries, laid out like the built-in ones.
+    custom: z.array(customSection).max(10).default([]),
+    // Display order of every section, native and custom (`custom:<id>`). Keys
+    // that are missing or unknown are repaired when the resume is read, so a
+    // stale order can never hide a section.
+    order: z.array(z.string().max(70)).max(40).default([]),
+    style: styleSchema,
 });
 
 // Keep in sync with TEMPLATES in frontend/src/lib/resume.js.

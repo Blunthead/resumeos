@@ -10,7 +10,7 @@ import {
   blankProject,
   isEmptyResume,
   layoutOf,
-  toBullets,
+  normalizeData,
 } from '../src/lib/resume.js'
 import { handoff } from '../src/lib/handoff.js'
 
@@ -33,24 +33,13 @@ describe('templates', () => {
 })
 
 describe('resume helpers', () => {
-  test('toBullets splits lines, trims, drops blanks and leading bullet marks', () => {
-    assert.deepEqual(toBullets('  one \n\n- two\n• three\r\n* four '), ['one', 'two', 'three', 'four'])
-    assert.deepEqual(toBullets(''), [])
-  })
-
   test('isEmptyResume is true for a blank resume and false once anything is filled in', () => {
-    const blank = {
-      contact: { fullName: '', jobTitle: '', email: '', phone: '', location: '', website: '', linkedin: '' },
-      summary: '',
-      experience: [],
-      education: [],
-      projects: [],
-      skills: [],
-      certifications: [],
-    }
+    const blank = normalizeData({})
     assert.equal(isEmptyResume(blank), true)
     assert.equal(isEmptyResume({ ...blank, summary: '  ' }), true, 'whitespace does not count')
     assert.equal(isEmptyResume({ ...blank, skills: ['x'] }), false)
+    assert.equal(isEmptyResume({ ...blank, languages: ['English'] }), false)
+    assert.equal(isEmptyResume({ ...blank, custom: [{ id: 'c', title: 'Awards', entries: [] }] }), false)
     assert.equal(isEmptyResume({ ...blank, contact: { ...blank.contact, fullName: 'A' } }), false)
     assert.equal(isEmptyResume(SAMPLE), false)
   })

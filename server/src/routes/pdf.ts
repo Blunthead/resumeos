@@ -4,6 +4,7 @@ import puppeteer, { type Browser } from "puppeteer";
 import { requireOwner } from "../middleware/guest.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createLimiter } from "../lib/limiter.js";
+import { fontCssFor } from "../lib/fonts.js";
 
 const router = Router();
 
@@ -58,7 +59,7 @@ async function render(html: string): Promise<Buffer> {
             else void request.abort();
         });
         await page.setContent(
-            `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0}</style></head><body>${html}</body></html>`,
+            `<!doctype html><html><head><meta charset="utf-8">${fontCssFor(html)}<style>html,body{margin:0;padding:0}</style></head><body>${html}</body></html>`,
             { waitUntil: "load" },
         );
         const pdf = await page.pdf({

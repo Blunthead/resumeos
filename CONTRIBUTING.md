@@ -29,8 +29,13 @@ cd frontend && npm run lint && npm test && npm run build
   `server/tests/api.test.mjs`; pure helpers in `frontend/tests/`.
 - **Measure before optimising.** Say what you measured and what changed.
 - **Templates:** a new template id must be added in both
-  `frontend/src/lib/resume.js` and `server/src/lib/resumeSchema.ts`. A test
-  fails if the two lists drift apart.
+  `frontend/src/lib/resume.js` and `server/src/lib/resumeSchema.ts`, and styled
+  in `resumeDocument.css` using the shared spacing tokens. If it uses the serif
+  or monospace family, list it in `server/src/lib/fonts.ts` too. Tests fail if
+  any of these drift apart.
+- **PDF output:** keep text the user didn't type out of the stylesheet (no
+  `content: "> "` style prefixes), and use static font weights, never variable
+  fonts. See "Fonts and the PDF" in the README.
 - **Never put secrets in the repo.** `.env` files are ignored; use
   `.env.example` for documentation.
 

@@ -26,7 +26,7 @@ export default function SiteHeader({ cta = false }) {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Logo />
-        <nav className="flex items-center gap-1 whitespace-nowrap text-sm font-medium text-slate-600">
+        <nav aria-label="Main" className="flex items-center gap-1 whitespace-nowrap text-sm font-medium text-slate-600">
           <Link to="/templates" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-900">
             Templates
           </Link>
