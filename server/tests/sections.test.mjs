@@ -114,3 +114,22 @@ describe("PDF fonts", () => {
         assert.deepEqual(uses("var(--rd-mono)"), [...MONO_TEMPLATES].sort());
     });
 });
+
+describe("ATS-safe typography", () => {
+    test("no letter-spacing wider than 0.12em, which PDF text extraction reads as spaced-out letters", () => {
+        const css = readFileSync(new URL("../../frontend/src/components/resumeDocument.css", import.meta.url), "utf8");
+        const wide = [...css.matchAll(/letter-spacing:\s*([0-9.]+)em/g)].filter((m) => Number(m[1]) > 0.12).map((m) => m[0]);
+        assert.deepEqual(wide, []);
+    });
+
+    test("the stylesheet never inserts words or symbols the user didn't type, apart from list separators", () => {
+        const css = readFileSync(new URL("../../frontend/src/components/resumeDocument.css", import.meta.url), "utf8");
+        // Decorative prefixes such as content: "//" or "> " would be read as part of a heading or name.
+        const allowed = new Set(['""', '"•"', '"|"', '"·"', '","', '";"', '"/"', "var(--rd-sep, \"•\")", "counter(rd-n) \".\"", "none"]);
+        const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+        const found = [...code.matchAll(/(?<![-\w])content:\s*((?:"[^"]*"|[^;"])+);/g)]
+            .map((m) => m[1].trim().replace(/\s*!important$/, ""))
+            .filter((v) => !allowed.has(v));
+        assert.deepEqual(found, []);
+    });
+});

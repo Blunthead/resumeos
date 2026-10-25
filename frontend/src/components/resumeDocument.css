@@ -13,6 +13,11 @@
   ATS note: nothing here puts text into the page that the user didn't type
   (no content: "//" or "> " prefixes), no tables, no positioned overlays.
   Separators between list items are the one deliberate exception.
+
+  Letter-spacing is capped at 0.12em everywhere. Wider tracking looks airy on
+  screen but PDF text extraction reads each gap as a space, so "SUMMARY" comes
+  out as "S U M M A R Y" and a parser can no longer find the section (or the
+  candidate's name). A test enforces the cap.
 */
 
 .rd {
@@ -252,7 +257,7 @@
   border-bottom: 1px solid var(--rule);
   color: var(--a);
   font-size: 0.82em;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="modern"] .rd-skills li {
@@ -290,7 +295,7 @@
   padding-bottom: 0.3em;
   border-bottom: 1px solid #9ca3af;
   font-size: 0.9em;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="classic"] .rd-skills {
@@ -325,7 +330,7 @@
   color: var(--ink-meta);
   font-size: 0.78em;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="minimal"] .rd-skills {
@@ -435,7 +440,7 @@
   font-family: var(--rd-serif);
   font-size: 2.5em;
   font-weight: 400;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="elegant"] .rd-jobtitle {
@@ -443,7 +448,7 @@
   color: var(--a);
   font-size: 0.9em;
   font-weight: 500;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="elegant"] .rd-contact {
@@ -505,7 +510,7 @@
   border-left: 0.25em solid var(--a);
   background: #f3f4f6;
   font-size: 0.88em;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="executive"] .rd-skills {
@@ -526,7 +531,7 @@
 .rd[data-template="timeline"] .rd-h {
   color: var(--a);
   font-size: 0.88em;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="timeline"] .rd-entry {
@@ -590,7 +595,7 @@
   align-items: center;
   gap: 0.6em;
   font-size: 0.88em;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-template="split"] .rd-h::before {
@@ -749,7 +754,7 @@
   border-bottom: 1px solid var(--rule);
   color: var(--a);
   font-size: 0.82em;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-layout="sidebar"] .rd-side .rd-h {
@@ -757,7 +762,7 @@
   border-bottom: 1px solid currentColor;
   color: inherit;
   font-size: 0.82em;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .rd[data-layout="sidebar"] .rd-side .rd-section {

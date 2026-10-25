@@ -171,7 +171,12 @@ function ResumeDocument({ data, template, accent }) {
         <Section id="skills" title={SECTION_LABEL.skills} key="skills">
           <ul className={data.skills.length > 14 ? 'rd-skills rd-skills-many' : 'rd-skills'}>
             {data.skills.map((s, i) => (
-              <li key={i}>{s}</li>
+              // The space is a line-break opportunity. Without it the inline
+              // layouts have nowhere to wrap between skills and split a word.
+              <Fragment key={i}>
+                {i > 0 && ' '}
+                <li>{s}</li>
+              </Fragment>
             ))}
           </ul>
         </Section>
