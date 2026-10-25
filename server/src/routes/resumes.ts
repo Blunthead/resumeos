@@ -2,6 +2,7 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import { Resume } from "../models/Resume.js";
 import { requireOwner } from "../middleware/guest.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 import {
     resumeCreateSchema,
     resumeDataSchema,
@@ -12,6 +13,10 @@ const router = Router();
 router.use(requireOwner);
 
 const MAX_RESUMES = 25;
+
+// A guest id costs nothing to mint, so the per-guest cap above doesn't stop one
+// machine filling the database. This caps creation per IP instead.
+const limitCreates = rateLimit(60, 60 * 60_000, "ip");
 
 function validId(id: string | undefined): id is string {
     return !!id && mongoose.isValidObjectId(id);
@@ -25,7 +30,7 @@ router.get("/", async (req, res) => {
     res.json(docs);
 });
 
-router.post("/", async (req, res) => {
+router.post("/", limitCreates, async (req, res) => {
     const parsed = resumeCreateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
         res.status(400).json({ error: "Invalid resume" });
@@ -50,7 +55,7 @@ router.get("/:id", async (req, res) => {
         res.status(404).json({ error: "Not found" });
         return;
     }
-    const doc = await Resume.findOne({ _id: req.params.id, owner: req.owner });
+    const doc = await Resume.findOne({ _id: req.params.id, owner: req.owner }).lean();
     if (!doc) {
         res.status(404).json({ error: "Not found" });
         return;
@@ -71,8 +76,8 @@ router.put("/:id", async (req, res) => {
     const doc = await Resume.findOneAndUpdate(
         { _id: req.params.id, owner: req.owner },
         { $set: parsed.data },
-        { new: true },
-    );
+        { new: true, projection: { updatedAt: 1 } },
+    ).lean();
     if (!doc) {
         res.status(404).json({ error: "Not found" });
         return;

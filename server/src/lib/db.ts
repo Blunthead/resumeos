@@ -4,9 +4,14 @@ import mongoose from "mongoose";
 // embedded MongoDB whose files live in server/.data so resumes survive
 // restarts. It is a dev convenience only: production must set MONGODB_URI.
 export async function connectDb() {
+    mongoose.connection.on("disconnected", () => console.warn("[db] disconnected"));
+    mongoose.connection.on("reconnected", () => console.log("[db] reconnected"));
+
     const uri = process.env.MONGODB_URI;
     if (uri) {
-        await mongoose.connect(uri);
+        // Fail in 10s with a clear error instead of hanging for 30s when Atlas
+        // is unreachable (wrong password, IP not allowed, cluster paused).
+        await mongoose.connect(uri, { serverSelectionTimeoutMS: 10_000 });
         console.log("[db] connected");
         return;
     }

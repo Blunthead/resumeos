@@ -15,16 +15,25 @@ export default function PaperPreview({ children, clip = false, className = '' })
   const [innerH, setInnerH] = useState(PAPER_H)
 
   useLayoutEffect(() => {
-    const measure = () => {
-      if (outer.current) setScale(outer.current.clientWidth / PAPER_W)
-      if (inner.current) setInnerH(inner.current.offsetHeight)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
+    // Measured once synchronously, so the first paint is already the right
+    // size and there is no jump from a guessed scale.
+    setScale(outer.current.clientWidth / PAPER_W)
+    if (!clip) setInnerH(inner.current.offsetHeight)
+
+    // After that, the observer reports sizes itself, so nothing here reads
+    // layout again. Setting equal state is a no-op, so unchanged sizes cost
+    // nothing.
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === outer.current) setScale(entry.contentRect.width / PAPER_W)
+        else setInnerH(entry.borderBoxSize?.[0]?.blockSize ?? entry.target.offsetHeight)
+      }
+    })
     ro.observe(outer.current)
-    ro.observe(inner.current)
+    // A clipped preview shows a fixed page height, so its content height is irrelevant.
+    if (!clip) ro.observe(inner.current)
     return () => ro.disconnect()
-  }, [])
+  }, [clip])
 
   const height = clip ? PAPER_H * scale : Math.max(innerH, PAPER_H) * scale
 

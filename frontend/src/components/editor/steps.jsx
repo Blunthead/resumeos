@@ -19,7 +19,7 @@ function ListStep({ items, onItems, blank, addLabel, render, itemTitle }) {
   )
 }
 
-function ContactStep({ data, onData }) {
+export function ContactStep({ data, onData }) {
   const c = data.contact
   const set = (key) => (value) => onData((d) => ({ ...d, contact: { ...d.contact, [key]: value } }))
   return (
@@ -37,7 +37,7 @@ function ContactStep({ data, onData }) {
   )
 }
 
-function SummaryStep({ data, onData }) {
+export function SummaryStep({ data, onData }) {
   return (
     <TextArea
       label="Summary"
@@ -50,7 +50,7 @@ function SummaryStep({ data, onData }) {
   )
 }
 
-function ExperienceStep({ data, onData }) {
+export function ExperienceStep({ data, onData }) {
   return (
     <ListStep
       items={data.experience}
@@ -83,7 +83,7 @@ function ExperienceStep({ data, onData }) {
   )
 }
 
-function ProjectsStep({ data, onData }) {
+export function ProjectsStep({ data, onData }) {
   return (
     <ListStep
       items={data.projects}
@@ -111,7 +111,7 @@ function ProjectsStep({ data, onData }) {
   )
 }
 
-function EducationStep({ data, onData }) {
+export function EducationStep({ data, onData }) {
   return (
     <ListStep
       items={data.education}
@@ -140,7 +140,7 @@ function EducationStep({ data, onData }) {
   )
 }
 
-function SkillsStep({ data, onData }) {
+export function SkillsStep({ data, onData }) {
   return (
     <ChipInput
       label="Your skills"
@@ -151,7 +151,7 @@ function SkillsStep({ data, onData }) {
   )
 }
 
-function CertificationsStep({ data, onData }) {
+export function CertificationsStep({ data, onData }) {
   return (
     <ChipInput
       label="Certifications"
@@ -162,13 +162,3 @@ function CertificationsStep({ data, onData }) {
     />
   )
 }
-
-export const STEPS = [
-  { id: 'contact', title: 'Contact', hint: 'How can employers reach you?', Component: ContactStep },
-  { id: 'summary', title: 'Summary', hint: 'A short introduction.', Component: SummaryStep },
-  { id: 'experience', title: 'Experience', hint: 'Start with your most recent job.', Component: ExperienceStep },
-  { id: 'projects', title: 'Projects', hint: 'Great if you are early in your career.', Component: ProjectsStep },
-  { id: 'education', title: 'Education', hint: 'Where did you study?', Component: EducationStep },
-  { id: 'skills', title: 'Skills', hint: 'What are you good at?', Component: SkillsStep },
-  { id: 'certifications', title: 'Certifications', hint: 'Anything you are certified in.', Component: CertificationsStep },
-]

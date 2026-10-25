@@ -1,16 +1,27 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { LazyMotion, MotionConfig, domAnimation } from 'motion/react'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Landing from './pages/Landing.jsx'
-import Templates from './pages/Templates.jsx'
-import Dashboard from './pages/Dashboard.jsx'
-import Editor from './pages/Editor.jsx'
+import { loadDashboard, loadEditor, loadTemplates } from './lib/routes.js'
 
-// LazyMotion loads only the animation features the app uses. reducedMotion
-// "user" turns movement off for anyone who has asked their OS for less of it.
+// The landing page is bundled with the app because nearly every first visit
+// lands on it. Everything else loads on demand.
+const Templates = lazy(loadTemplates)
+const Dashboard = lazy(loadDashboard)
+const Editor = lazy(loadEditor)
+
+function PageLoading() {
+  return (
+    <div role="status" className="grid min-h-screen place-items-center text-slate-500">
+      Loading…
+    </div>
+  )
+}
+
 export default function App() {
   return (
-    <LazyMotion features={domAnimation}>
-      <MotionConfig reducedMotion="user">
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/templates" element={<Templates />} />
@@ -18,7 +29,7 @@ export default function App() {
           <Route path="/resumes/:id" element={<Editor />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </MotionConfig>
-    </LazyMotion>
+      </Suspense>
+    </ErrorBoundary>
   )
 }

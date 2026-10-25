@@ -19,8 +19,8 @@
 - **14 templates** — 11 single-column layouts (Modern, Classic, Minimal, Bold, Compact, Elegant, Executive, Timeline, Split, Tech, Academic) and 3 sidebar layouts. Every template has an adjustable accent colour.
 - **Guided editor** — one short step at a time: Contact, Summary, Experience, Projects, Education, Skills, Certifications.
 - **Live preview** — the page next to the form is the resume itself, and it updates as you type.
-- **PDF download** — the PDF is rendered from the exact HTML you're previewing, so what you see is what you get.
-- **Autosave** — changes are saved as you go. You can keep up to 25 resumes.
+- **PDF download** — the PDF is made from the same HTML as the preview, rendered by a headless browser on the server.
+- **Autosave** — changes are saved as you go, including if you close the tab mid-edit, and retried automatically if the connection drops. You can keep up to 25 resumes.
 - **No account** — your browser gets a random guest id on first visit (see [Limitations](#limitations)).
 
 | Templates | My resumes |
@@ -82,30 +82,33 @@ The first backend start downloads a MongoDB binary for the embedded database, so
 |---|---|---|
 | `server/` | `npm run dev` | API with auto-reload |
 | `server/` | `npm start` | API, no reload |
-| `server/` | `npm test` | Unit tests |
+| `server/` | `npm test` | Unit and API integration tests (real requests against an in-memory MongoDB) |
 | `server/` | `npm run typecheck` | TypeScript check |
 | `frontend/` | `npm run dev` | Vite dev server |
 | `frontend/` | `npm run build` | Production build into `dist/` |
 | `frontend/` | `npm run lint` | Oxlint |
+| `frontend/` | `npm test` | Unit tests for the shared helpers |
 
 ## API
 
-Every route needs an `x-guest-id` header. Anything else gets a `401`.
+Every `/api` route needs an `x-guest-id` header. Anything else gets a `401`. `GET /` is an open health check: `{ status, service, db }`.
 
 | Method | Route | |
 |---|---|---|
 | `GET` | `/api/resumes` | List your resumes (summary fields only) |
 | `POST` | `/api/resumes` | Create a resume (max 25) |
 | `GET` | `/api/resumes/:id` | Fetch one |
-| `PUT` | `/api/resumes/:id` | Update title, template, accent or content |
+| `PUT` | `/api/resumes/:id` | Update title, template, accent or content. Returns only `{ _id, updatedAt }` |
 | `DELETE` | `/api/resumes/:id` | Delete |
-| `POST` | `/api/pdf` | Render `{ html, filename }` to a PDF (15 requests a minute) |
+| `POST` | `/api/pdf` | Render `{ html, filename }` to a PDF |
 
-Every query is scoped to the caller's guest id, and another guest's resume answers `404`, not `403`, so ids can't be probed. Request bodies are validated with Zod, and every string and list has a length cap.
+Every query is scoped to the caller's guest id, and another guest's resume answers `404`, not `403`, so ids can't be probed. Request bodies are validated with Zod, and every string and list has a length cap. Client mistakes answer with their own status (`400` malformed JSON, `413` body too large), never a generic `500`.
+
+**Limits:** 25 resumes per guest; 60 creations per hour per IP (a guest id is free to mint, so the per-guest cap alone can't stop one machine filling the database); PDFs are limited to 15 a minute per guest and 40 a minute per IP, and at most 2 render at once, with a short queue behind them before the server answers `503`.
 
 ## How PDF export stays safe
 
-The client sends the HTML it is previewing, so the PDF route amounts to "render caller-supplied HTML in a browser". That is only safe because the page is locked down: JavaScript is switched off and every network or file request is aborted, so injected markup can neither run code nor fetch anything. The input is size-capped, the filename is stripped to `[A-Za-z0-9 _-]`, and the route is rate-limited per guest. See [`server/src/routes/pdf.ts`](server/src/routes/pdf.ts).
+The client sends the HTML it is previewing, so the PDF route amounts to "render caller-supplied HTML in a browser". That is only safe because the page is locked down: JavaScript is switched off and every network or file request is aborted, so injected markup can neither run code nor fetch anything. The input is size-capped, the filename is stripped to `[A-Za-z0-9 _-]`, and the route is rate-limited and concurrency-capped. If Chromium crashes it is relaunched on the next request. See [`server/src/routes/pdf.ts`](server/src/routes/pdf.ts).
 
 ## Deploying
 
@@ -129,15 +132,21 @@ frontend/
     lib/                api.js, resume.js (template list, sample data)
 ```
 
+## Performance notes
+
+Opening a template is one request: the created resume is handed straight to the editor instead of being fetched again. While you browse the landing page the app wakes the API (the free host sleeps when idle) and downloads the next page's code, and the template gallery only builds the previews that are near the screen. The CORS preflight is cacheable for two hours, so repeat requests skip the extra round trip.
+
 ## Limitations
 
 - **Guest ids are not authentication.** Anyone who learns your id can read your resumes, and clearing your browser's storage loses access to them. The server isolates guests from each other, but it is a stand-in until real accounts exist, and swapping one in changes a single line in `middleware/guest.ts`.
 - **The three sidebar templates use two columns.** Some applicant tracking systems read multi-column layouts out of order. If that matters for a job, use one of the single-column templates.
+- **The PDF uses the server's fonts, the preview uses yours.** The resume CSS asks for Segoe UI, Georgia and Consolas. A Windows or Mac browser has them; the Linux server doesn't, so it substitutes metric-similar Liberation fonts. The typeface and some line breaks can therefore differ slightly between the on-screen preview and the downloaded PDF (measured: identical for the Modern and Tech samples, five lines wrapped differently in Classic, and more in the narrow Sidebar layout). Bundling the resume fonts would fix it.
+- **Saves replace the whole resume.** If one resume is open in two tabs, the tab that saves last wins.
 - **The rate limiter is in memory**, so it is per server instance.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please run `npm test` and `npm run typecheck` in `server/`, and `npm run lint` and `npm run build` in `frontend/`, before opening a PR. CI runs the same checks.
+Issues and pull requests are welcome. Please run `npm test` and `npm run typecheck` in `server/`, and `npm test`, `npm run lint` and `npm run build` in `frontend/`, before opening a PR. CI runs the same checks.
 
 ## License
 

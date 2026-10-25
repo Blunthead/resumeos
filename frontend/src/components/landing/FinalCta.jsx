@@ -1,5 +1,5 @@
 import { m } from 'motion/react'
-import PillLink from './PillLink.jsx'
+import PillLink from '../PillLink.jsx'
 import { EASE } from './ease.js'
 
 export default function FinalCta() {

@@ -95,8 +95,8 @@ function Templates() {
 function Pdf() {
   return (
     <Card className="md:col-span-3">
-      <Title>The PDF you see is the PDF you get.</Title>
-      <Body>It's made from the exact preview on your screen, so nothing shifts on the way out.</Body>
+      <Title>One click to a clean PDF.</Title>
+      <Body>Made from the resume you're looking at, ready to send to any employer.</Body>
       <div className="mt-8 flex items-center gap-4">
         <div className="relative grid h-16 w-14 place-items-center rounded-lg bg-[#f5f5f7] ring-1 ring-black/5">
           <span className="text-xs font-bold tracking-wider text-[#ff453a]">PDF</span>

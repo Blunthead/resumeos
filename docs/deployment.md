@@ -42,8 +42,13 @@ Go back to Railway and set `CLIENT_URL` to the exact Vercel URL (for example `ht
 2. Type a name, wait for "All changes saved", and refresh. It should still be there.
 3. Click **Download PDF**. If saving works but the PDF fails, Chromium isn't launching: check the Railway logs.
 
+## Updating after a `git push`
+
+Vercel redeploys on every push. A Render service created from a **public Git repository URL** does not get a push webhook, so redeploy it by hand: open the service, then **Manual Deploy → Deploy latest commit**. (Connecting the repo through Render's GitHub integration instead makes it automatic.)
+
 ## Notes
 
+- The free Render instance sleeps after about 15 minutes without traffic and takes up to a minute to wake. The site softens this by waking the API while the landing page loads. To avoid it entirely, point a free uptime monitor (for example UptimeRobot) at `GET /` every 10 minutes.
 - Free-tier Railway services can sleep or run out of monthly credit. If the API is down, the app loads but can't save.
 - Anyone can create resumes, so watch your Atlas storage. The API caps each guest at 25 resumes, and the PDF route is rate-limited.
 - The Dockerfile has not been verified end to end yet. If the first Railway build fails, the build log will say why.

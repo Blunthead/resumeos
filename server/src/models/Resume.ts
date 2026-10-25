@@ -7,7 +7,7 @@ const resumeSchema = new Schema(
     {
         // Until accounts exist this is a random guest id from the browser.
         // When auth lands it becomes a real user reference.
-        owner: { type: String, required: true, index: true },
+        owner: { type: String, required: true },
         title: { type: String, required: true, default: "Untitled resume" },
         template: { type: String, required: true, default: "modern" },
         accent: { type: String, required: true, default: "#3d5a80" },
@@ -15,5 +15,10 @@ const resumeSchema = new Schema(
     },
     { timestamps: true },
 );
+
+// Every query is "this guest's resumes, newest first" or "this guest's resume
+// by id". One compound index serves the list without an in-memory sort, and
+// its owner prefix covers every other lookup, so no separate owner index.
+resumeSchema.index({ owner: 1, updatedAt: -1 });
 
 export const Resume = model("Resume", resumeSchema);

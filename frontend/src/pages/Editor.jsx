@@ -1,26 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Logo } from '../components/SiteHeader.jsx'
+import Logo from '../components/Logo.jsx'
 import PaperPreview from '../components/PaperPreview.jsx'
 import ResumeDocument from '../components/ResumeDocument.jsx'
-import { STEPS } from '../components/editor/steps.jsx'
+import { STEPS } from '../components/editor/stepList.js'
 import { api } from '../lib/api.js'
+import { handoff } from '../lib/handoff.js'
 import { ACCENTS, SAMPLE, TEMPLATES, accentOf, isEmptyResume } from '../lib/resume.js'
 import documentCss from '../components/resumeDocument.css?raw'
+
+const DEFAULT_TITLE = 'Untitled resume'
 
 const SAVE_LABEL = {
   saved: 'All changes saved',
   dirty: 'Unsaved changes…',
   saving: 'Saving…',
-  error: "Couldn't save — retrying when you type",
+  error: "Couldn't save — retrying…",
+  failed: "Couldn't save — try reloading the page",
 }
 
-export default function Editor() {
+// Keyed by id so opening a different resume always starts from a clean slate.
+export default function EditorPage() {
   const { id } = useParams()
+  return <Editor key={id} id={id} />
+}
+
+function Editor({ id }) {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('loading') // loading | ready | missing | error
+  // A resume that was just created arrives with the click that made it, so the
+  // editor opens at once instead of asking the server for it again.
+  const [resume, setResume] = useState(() => handoff.peek(id))
+  const [status, setStatus] = useState(resume ? 'ready' : 'loading') // loading | ready | missing | error
   const [loadError, setLoadError] = useState('')
-  const [resume, setResume] = useState(null)
+  const [attempt, setAttempt] = useState(0)
   const [saveState, setSaveState] = useState('saved')
   const [step, setStep] = useState(0)
   const [tab, setTab] = useState('edit') // phones show one pane at a time
@@ -28,12 +40,16 @@ export default function Editor() {
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState('')
 
-  const latest = useRef(null)
+  const latest = useRef(resume)
   const dirty = useRef(false)
   const timer = useRef(null)
+  const queue = useRef(Promise.resolve())
+  const retry = useRef({ timer: null, count: 0, stopped: false, run: null })
   const previewRef = useRef(null)
 
   useEffect(() => {
+    handoff.drop(id)
+    if (latest.current) return undefined
     let cancelled = false
     api
       .getResume(id)
@@ -54,27 +70,73 @@ export default function Editor() {
     return () => {
       cancelled = true
     }
+  }, [id, attempt])
+
+  // What the server stores. An emptied title is saved as the default rather
+  // than rejected, so the field can be cleared and retyped freely.
+  const payload = () => {
+    const { title, template, accent, data } = latest.current
+    return { title: title.trim() || DEFAULT_TITLE, template, accent, data }
+  }
+
+  // Saves run one at a time. Two in flight together could land out of order
+  // and let an older copy overwrite a newer one.
+  const save = useCallback(() => {
+    const run = async () => {
+      if (!dirty.current || !latest.current) return
+      dirty.current = false
+      setSaveState('saving')
+      try {
+        await api.updateResume(id, payload())
+        retry.current.count = 0
+        setSaveState(dirty.current ? 'dirty' : 'saved')
+      } catch (e) {
+        dirty.current = true
+        // Only failures that can heal are retried: no connection, a server
+        // error, or being rate limited. A 404 (deleted elsewhere) or 400 will
+        // fail identically every time, so those stop and say so.
+        const healable = e.status === 0 || e.status === 429 || e.status >= 500
+        setSaveState(healable ? 'error' : 'failed')
+        const r = retry.current
+        clearTimeout(r.timer)
+        // 4s, 8s, 16s… up to every 30s, so a blip heals without another keystroke.
+        if (healable && !r.stopped) r.timer = setTimeout(() => r.run?.(), Math.min(30_000, 4000 * 2 ** r.count++))
+      }
+    }
+    queue.current = queue.current.then(run)
+    return queue.current
   }, [id])
 
-  const save = useCallback(async () => {
-    if (!dirty.current || !latest.current) return
-    dirty.current = false
-    setSaveState('saving')
-    const { title, template, accent, data } = latest.current
-    try {
-      await api.updateResume(id, { title, template, accent, data })
-      setSaveState(dirty.current ? 'dirty' : 'saved')
-    } catch {
-      dirty.current = true
-      setSaveState('error')
+  // Closing or reloading the tab inside the 800ms before an edit is saved would
+  // lose it. `keepalive` lets this last request finish after the page is gone.
+  useEffect(() => {
+    const flush = () => {
+      if (!dirty.current || !latest.current) return
+      dirty.current = false
+      api.updateResume(id, payload(), { keepalive: true }).catch(() => {
+        dirty.current = true
+      })
+    }
+    const onHide = () => document.visibilityState === 'hidden' && flush()
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', flush)
     }
   }, [id])
 
   // Leaving the page flushes any pending edit rather than dropping it.
   useEffect(() => {
+    const r = retry.current
+    r.stopped = false
+    r.run = save
     return () => {
       clearTimeout(timer.current)
       void save()
+      // One last attempt is made above; after that, no retries outlive the page.
+      r.stopped = true
+      clearTimeout(r.timer)
     }
   }, [save])
 
@@ -106,7 +168,7 @@ export default function Editor() {
     try {
       await save()
       const html = `<style>${documentCss}</style>${el.outerHTML}`
-      const name = resume.data.contact.fullName || resume.title
+      const name = resume.data.contact.fullName || resume.title.trim() || DEFAULT_TITLE
       const blob = await api.renderPdf(html, `${name} resume`)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -121,8 +183,17 @@ export default function Editor() {
     }
   }
 
+  // The form updates instantly; the preview may lag a frame behind while a
+  // fast typist is mid-word, which keeps every keystroke responsive. (Called
+  // before the early returns below, so every render runs the same hooks.)
+  const previewData = useDeferredValue(resume && !isEmptyResume(resume.data) ? resume.data : SAMPLE)
+
   if (status === 'loading') {
-    return <div className="grid min-h-screen place-items-center text-slate-500">Loading your resume…</div>
+    return (
+      <div role="status" className="grid min-h-screen place-items-center text-slate-500">
+        Loading your resume…
+      </div>
+    )
   }
   if (status !== 'ready') {
     return (
@@ -132,12 +203,27 @@ export default function Editor() {
             {status === 'missing' ? "We couldn't find that resume" : "Couldn't load your resume"}
           </p>
           {loadError && <p className="mt-1 text-slate-600">{loadError}</p>}
-          <button
-            onClick={() => navigate('/resumes')}
-            className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700"
-          >
-            Go to my resumes
-          </button>
+          <div className="mt-5 flex justify-center gap-3">
+            {status === 'error' && (
+              <button
+                onClick={() => {
+                  setStatus('loading')
+                  setAttempt((n) => n + 1)
+                }}
+                className="rounded-xl bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700"
+              >
+                Try again
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/resumes')}
+              className={`rounded-xl px-5 py-2.5 font-semibold ${
+                status === 'error' ? 'text-slate-600 hover:bg-slate-100' : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Go to my resumes
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -156,11 +242,12 @@ export default function Editor() {
         <input
           aria-label="Resume name"
           value={resume.title}
-          onChange={(e) => change({ title: e.target.value.slice(0, 100) || 'Untitled resume' })}
+          onChange={(e) => change({ title: e.target.value.slice(0, 100) })}
+          onBlur={() => !resume.title.trim() && change({ title: DEFAULT_TITLE })}
           className="ml-2 hidden w-56 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-200 focus:border-blue-400 focus:outline-none sm:block"
         />
         <span
-          className={`ml-auto hidden text-xs md:block ${saveState === 'error' ? 'text-red-600' : 'text-slate-500'}`}
+          className={`ml-auto hidden text-xs md:block ${saveState === 'error' || saveState === 'failed' ? 'text-red-600' : 'text-slate-500'}`}
           role="status"
         >
           {SAVE_LABEL[saveState]}
@@ -313,7 +400,7 @@ export default function Editor() {
             <div ref={previewRef} className="overflow-hidden rounded-lg shadow-lg ring-1 ring-slate-200">
               <PaperPreview>
                 <ResumeDocument
-                  data={empty ? SAMPLE : resume.data}
+                  data={previewData}
                   template={resume.template}
                   accent={resume.accent}
                 />

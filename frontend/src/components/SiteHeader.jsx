@@ -1,32 +1,28 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { m, useScroll, useTransform } from 'motion/react'
-import PillLink from './landing/PillLink.jsx'
-
-// The full wordmark on wider screens; the "ROS." monogram where space is tight.
-export function Logo({ className = '' }) {
-  return (
-    <Link
-      to="/"
-      aria-label="ResumeOS home"
-      className={`font-brand text-[22px] font-medium leading-none tracking-[-0.02em] text-[#2f2f2f] transition-opacity hover:opacity-70 ${className}`}
-    >
-      <span className="sm:hidden">ROS.</span>
-      <span className="hidden sm:inline">ResumeOS.</span>
-    </Link>
-  )
-}
+import Logo from './Logo.jsx'
+import PillLink from './PillLink.jsx'
 
 // Clear at the top of the page; frosted glass once content scrolls beneath it.
+// One boolean flips at the threshold, so scrolling doesn't re-render anything
+// and no animation library is needed on the pages that share this header.
 export default function SiteHeader({ cta = false }) {
-  const { scrollY } = useScroll()
-  const background = useTransform(scrollY, [0, 60], ['rgba(251,251,253,0)', 'rgba(251,251,253,0.72)'])
-  const blur = useTransform(scrollY, [0, 60], ['blur(0px)', 'blur(20px) saturate(180%)'])
-  const line = useTransform(scrollY, [0, 60], ['rgba(0,0,0,0)', 'rgba(0,0,0,0.08)'])
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 40)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
 
   return (
-    <m.header
-      className="sticky top-0 z-50 border-b"
-      style={{ backgroundColor: background, backdropFilter: blur, WebkitBackdropFilter: blur, borderBottomColor: line }}
+    <header
+      className={`sticky top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] duration-300 ${
+        scrolled
+          ? 'border-black/[0.08] bg-[#fbfbfd]/75 backdrop-blur-xl backdrop-saturate-150'
+          : 'border-transparent bg-transparent'
+      }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Logo />
@@ -46,6 +42,6 @@ export default function SiteHeader({ cta = false }) {
           ) : null}
         </nav>
       </div>
-    </m.header>
+    </header>
   )
 }

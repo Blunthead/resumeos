@@ -26,7 +26,7 @@ export const ACCENTS = ['#3d5a80', '#1f2937', '#52606d', '#6d4553', '#3f6b66', '
 
 export const accentOf = (templateId) => TEMPLATES.find((t) => t.id === templateId)?.accent ?? '#3d5a80'
 
-export const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
+const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 
 export const blankExperience = () => ({
   id: newId(), role: '', company: '', location: '', startDate: '', endDate: '', description: '',
@@ -136,14 +136,4 @@ export const SAMPLE = {
     'CI/CD',
   ],
   certifications: ['AWS Certified Developer – Associate', 'Certified Scrum Master'],
-}
-
-export const BLANK_DATA = {
-  contact: { fullName: '', jobTitle: '', email: '', phone: '', location: '', website: '', linkedin: '' },
-  summary: '',
-  experience: [],
-  education: [],
-  projects: [],
-  skills: [],
-  certifications: [],
 }

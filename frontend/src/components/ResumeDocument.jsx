@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import './resumeDocument.css'
 import { layoutOf, toBullets } from '../lib/resume.js'
 
@@ -32,7 +33,7 @@ function Bullets({ text }) {
 // Real headings and lists throughout — what applicant tracking systems parse
 // best. 'single' stacks everything in one column; 'sidebar' moves contact,
 // skills, education and certifications into a side panel.
-export default function ResumeDocument({ data, template, accent }) {
+function ResumeDocument({ data, template, accent }) {
   const layout = layoutOf(template)
   const c = data.contact
   const contactItems = [c.email, c.phone, c.location, c.website, c.linkedin].filter(Boolean)
@@ -169,3 +170,8 @@ export default function ResumeDocument({ data, template, accent }) {
     </div>
   )
 }
+
+// Many previews can be on screen at once (the template gallery shows fourteen),
+// and the editor re-renders on every keystroke. A preview whose data, template
+// and colour haven't changed has nothing to redraw.
+export default memo(ResumeDocument)

@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SiteHeader from '../components/SiteHeader.jsx'
+import LazyPaper from '../components/LazyPaper.jsx'
 import PaperPreview from '../components/PaperPreview.jsx'
 import ResumeDocument from '../components/ResumeDocument.jsx'
 import { api } from '../lib/api.js'
+import { handoff } from '../lib/handoff.js'
+import { loadEditor, whenIdle } from '../lib/routes.js'
 import { SAMPLE, TEMPLATES } from '../lib/resume.js'
 
 const FILTERS = [
@@ -18,17 +21,33 @@ export default function Templates() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('all')
 
+  useEffect(() => {
+    // While the visitor looks over the templates: download the editor's code,
+    // and open the connection (waking the server if it was asleep) so choosing
+    // one is a single quick request.
+    api.prime()
+    whenIdle(loadEditor)
+  }, [])
+
   const shown = TEMPLATES.filter((t) => filter === 'all' || t.layout === filter)
 
+  // A ref, not just `busy`: state only updates on the next render, so a burst
+  // of clicks inside one frame would all still see "not busy".
+  const creating = useRef(false)
+
   async function choose(template) {
+    if (creating.current) return
+    creating.current = true
     setBusy(template.id)
     setError('')
     try {
       const resume = await api.createResume({ template: template.id, accent: template.accent })
+      handoff.put(resume)
       navigate(`/resumes/${resume._id}`)
     } catch (e) {
       setError(e.message)
       setBusy(null)
+      creating.current = false
     }
   }
 
@@ -80,9 +99,11 @@ export default function Templates() {
               style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
             >
               <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 group-hover:shadow-lg group-hover:ring-blue-300 group-focus-visible:ring-2 group-focus-visible:ring-blue-500">
-                <PaperPreview clip>
-                  <ResumeDocument data={SAMPLE} template={t.id} accent={t.accent} />
-                </PaperPreview>
+                <LazyPaper>
+                  <PaperPreview clip>
+                    <ResumeDocument data={SAMPLE} template={t.id} accent={t.accent} />
+                  </PaperPreview>
+                </LazyPaper>
               </div>
               <div className="mt-3 flex items-baseline justify-between px-1">
                 <span className="font-semibold text-slate-900">{t.name}</span>

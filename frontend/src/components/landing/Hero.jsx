@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { m, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import AppWindow from './AppWindow.jsx'
-import PillLink from './PillLink.jsx'
+import PillLink from '../PillLink.jsx'
 import { EASE } from './ease.js'
 import { TEMPLATES } from '../../lib/resume.js'
 
