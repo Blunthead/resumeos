@@ -1,48 +1,32 @@
-import { useEffect, useState } from 'react'
 import { m, useReducedMotion } from 'motion/react'
 import Reveal from './Reveal.jsx'
 import { EASE } from './ease.js'
+import { NAMES, useTyped } from './useTyped.js'
 import { TEMPLATES } from '../../lib/resume.js'
 
-const NAMES = ['Alex Morgan', 'Priya Sharma', 'Sam Okafor', 'Mei Tanaka']
-
-// Types a name, holds it, deletes it, moves to the next. Holds still for people
-// who've asked for less motion.
-function useTyped(names, enabled) {
-  const [state, setState] = useState({ i: 0, n: 0, deleting: false })
-
-  useEffect(() => {
-    if (!enabled) return undefined
-    const full = names[state.i]
-    let delay = state.deleting ? 38 : 85
-    let next
-    if (!state.deleting && state.n === full.length) {
-      delay = 1600
-      next = { ...state, deleting: true }
-    } else if (state.deleting && state.n === 0) {
-      delay = 350
-      next = { i: (state.i + 1) % names.length, n: 0, deleting: false }
-    } else {
-      next = { ...state, n: state.n + (state.deleting ? -1 : 1) }
-    }
-    const id = setTimeout(() => setState(next), delay)
-    return () => clearTimeout(id)
-  }, [state, names, enabled])
-
-  return enabled ? names[state.i].slice(0, state.n) : names[0]
-}
-
+// A soft blue spotlight follows the cursor across the card.
 function Card({ className = '', children }) {
+  const track = (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`)
+    e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`)
+  }
   return (
     <m.div
-      className={`relative overflow-hidden rounded-[28px] bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.06] md:p-10 ${className}`}
+      onMouseMove={track}
+      className={`group relative overflow-hidden rounded-[28px] bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.06] md:p-10 ${className}`}
       initial={{ opacity: 0, y: 36 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       whileHover={{ y: -4, boxShadow: '0 24px 60px -24px rgba(0,0,0,0.18)' }}
       transition={{ duration: 0.8, ease: EASE }}
     >
-      {children}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{ background: 'radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(0,113,227,0.07), transparent 65%)' }}
+      />
+      <div className="relative">{children}</div>
     </m.div>
   )
 }

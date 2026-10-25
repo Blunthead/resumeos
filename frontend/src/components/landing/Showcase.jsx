@@ -21,6 +21,14 @@ export default function Showcase() {
 
   return (
     <section ref={ref} className="relative bg-[#f5f5f7]" style={{ height: `${PICKS.length * 85 + 40}vh` }}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-40 bg-gradient-to-b from-[#fbfbfd] to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-[#fbfbfd] to-transparent"
+      />
       <div className="sticky top-0 flex h-screen items-center overflow-hidden pt-16 md:pt-0">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 md:grid-cols-2 md:gap-16">
           <div>
