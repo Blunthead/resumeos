@@ -1,7 +1,9 @@
 {
   "name": "resumeos-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "ResumeOS API: resume CRUD and PDF export",
+  "private": true,
+  "license": "MIT",
   "engines": {
     "node": ">=20"
   },

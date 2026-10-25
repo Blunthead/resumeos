@@ -5,7 +5,7 @@ import ResumeDocument from '../components/ResumeDocument.jsx'
 import { SAMPLE } from '../lib/resume.js'
 
 const STEPS = [
-  { n: '1', title: 'Pick a template', text: 'Five clean layouts that applicant tracking systems read correctly.' },
+  { n: '1', title: 'Pick a template', text: 'Fourteen clean layouts, from classic single-column to a bold sidebar.' },
   { n: '2', title: 'Fill in the blanks', text: 'A short guided form, and your resume updates live as you type.' },
   { n: '3', title: 'Download your PDF', text: 'Ready to send. Switch template or colour any time.' },
 ]

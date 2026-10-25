@@ -1,7 +1,7 @@
 /*
   The resume document. Plain CSS (not Tailwind) on purpose: this exact file is
   also sent to the server and printed to PDF, so it must be self-contained.
-  Everything is scoped under .rd, and the five templates are variations on the
+  Everything is scoped under .rd, and the templates are variations on the
   same structure selected by [data-template].
 */
 
