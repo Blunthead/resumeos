@@ -102,6 +102,10 @@ Every query is scoped to the caller's guest id, and another guest's resume answe
 
 The client sends the HTML it is previewing, so the PDF route amounts to "render caller-supplied HTML in a browser". That is only safe because the page is locked down: JavaScript is switched off and every network or file request is aborted, so injected markup can neither run code nor fetch anything. The input is size-capped, the filename is stripped to `[A-Za-z0-9 _-]`, and the route is rate-limited per guest. See [`server/src/routes/pdf.ts`](server/src/routes/pdf.ts).
 
+## Deploying
+
+The API deploys to Railway from `server/Dockerfile` and the frontend to Vercel. Step-by-step in [docs/deployment.md](docs/deployment.md).
+
 ## Project layout
 
 ```
