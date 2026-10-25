@@ -11,6 +11,21 @@
 </p>
 
 <p align="center">
+  <a href="https://resumeos-eta.vercel.app"><b>Try it live &rarr;</b></a>
+</p>
+
+<p align="center">
+  <a href="https://resumeos-eta.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/live%20demo-resumeos--eta.vercel.app-0071e3" /></a>
+  <a href="https://github.com/Blunthead/resumeos/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Blunthead/resumeos/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2f2f2f" /></a>
+  <img alt="Node 20+" src="https://img.shields.io/badge/node-%E2%89%A520-2f2f2f" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/landing.png" alt="The ResumeOS landing page" width="900" />
+</p>
+
+<p align="center">
   <img src="docs/screenshots/editor.png" alt="The ResumeOS editor: a guided form on the left, a live resume preview on the right" width="900" />
 </p>
 
@@ -146,7 +161,7 @@ Opening a template is one request: the created resume is handed straight to the 
 
 ## Contributing
 
-Issues and pull requests are welcome. Please run `npm test` and `npm run typecheck` in `server/`, and `npm test`, `npm run lint` and `npm run build` in `frontend/`, before opening a PR. CI runs the same checks.
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers running it locally and the checks CI runs. To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## License
 

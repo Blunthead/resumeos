@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /server
+    schedule: { interval: monthly }
+    groups:
+      server-deps: { patterns: ["*"] }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: monthly }
+    groups:
+      frontend-deps: { patterns: ["*"] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

@@ -1,0 +1,5 @@
+# Normalise line endings so a Windows checkout doesn't show every file as changed.
+* text=auto eol=lf
+*.png binary
+*.woff binary
+*.woff2 binary
