@@ -52,9 +52,9 @@ function Dates({ start, end }) {
 
 // `data-section` is what the editor listens for: clicking a section in the
 // preview opens its form. It carries no style, so it prints as nothing.
-function Section({ id, title, children }) {
+function Section({ id, title, ghost, children }) {
   return (
-    <section className="rd-section" data-section={id}>
+    <section className={ghost ? 'rd-section rd-ghost' : 'rd-section'} data-section={id}>
       <h2 className="rd-h">{title}</h2>
       {children}
     </section>
@@ -81,26 +81,33 @@ const join = (...parts) => parts.filter(Boolean).join(' · ')
 // Real headings and lists throughout — what applicant tracking systems parse
 // best. 'single' stacks everything in one column; 'sidebar' moves contact,
 // skills, education, certifications and languages into a side panel.
-function ResumeDocument({ data, template, accent }) {
+const NO_GHOST = new Set()
+
+// `ghost` names the parts that are sample content (see lib/preview.js). They
+// are drawn faded. The PDF is rendered without it.
+function ResumeDocument({ data, template, accent, ghost = NO_GHOST }) {
   const layout = layoutOf(template)
   const c = data.contact
   const custom = data.custom ?? []
   const style = data.style ?? {}
   const order = resolveOrder({ custom, order: data.order ?? [] })
-  const contactItems = [c.email, c.phone, c.location, c.website, c.linkedin].filter(Boolean)
+  const contactItems = ['email', 'phone', 'location', 'website', 'linkedin']
+    .filter((f) => c[f])
+    .map((f) => ({ text: c[f], ghost: ghost.has(`contact.${f}`) }))
+  const fade = (id) => (ghost.has(id) ? ' rd-ghost' : '')
 
   const header = (
     <div className="rd-header" data-section="contact">
       <div className="rd-id">
-        {c.fullName && <h1 className="rd-name">{c.fullName}</h1>}
-        {c.jobTitle && <p className="rd-jobtitle">{c.jobTitle}</p>}
+        {c.fullName && <h1 className={`rd-name${fade('contact.fullName')}`}>{c.fullName}</h1>}
+        {c.jobTitle && <p className={`rd-jobtitle${fade('contact.jobTitle')}`}>{c.jobTitle}</p>}
       </div>
       {layout === 'single' && contactItems.length > 0 && (
         <p className="rd-contact">
           {contactItems.map((item, i) => (
             <Fragment key={i}>
               {i > 0 && ' '}
-              <span>{item}</span>
+              <span className={item.ghost ? 'rd-ghost' : undefined}>{item.text}</span>
             </Fragment>
           ))}
         </p>
@@ -113,7 +120,9 @@ function ResumeDocument({ data, template, accent }) {
       <Section id="contact" title="Contact">
         <ul className="rd-clist">
           {contactItems.map((item, i) => (
-            <li key={i}>{item}</li>
+            <li key={i} className={item.ghost ? 'rd-ghost' : undefined}>
+              {item.text}
+            </li>
           ))}
         </ul>
       </Section>
@@ -122,13 +131,13 @@ function ResumeDocument({ data, template, accent }) {
   const renderers = {
     summary: () =>
       data.summary.trim() ? (
-        <Section id="summary" title={SECTION_LABEL.summary} key="summary">
+        <Section id="summary" title={SECTION_LABEL.summary} key="summary" ghost={ghost.has('summary')}>
           <Rich text={data.summary} />
         </Section>
       ) : null,
     experience: () =>
       data.experience.length ? (
-        <Section id="experience" title={SECTION_LABEL.experience} key="experience">
+        <Section id="experience" title={SECTION_LABEL.experience} key="experience" ghost={ghost.has('experience')}>
           {data.experience.map((job) => (
             <Entry
               key={job.id}
@@ -143,7 +152,7 @@ function ResumeDocument({ data, template, accent }) {
       ) : null,
     projects: () =>
       data.projects.length ? (
-        <Section id="projects" title={SECTION_LABEL.projects} key="projects">
+        <Section id="projects" title={SECTION_LABEL.projects} key="projects" ghost={ghost.has('projects')}>
           {data.projects.map((p) => (
             <Entry key={p.id} title={p.name} meta={p.link ? <span className="rd-meta rd-link">{p.link}</span> : null}>
               <Rich text={p.description} bullets />
@@ -153,7 +162,7 @@ function ResumeDocument({ data, template, accent }) {
       ) : null,
     education: () =>
       data.education.length ? (
-        <Section id="education" title={SECTION_LABEL.education} key="education">
+        <Section id="education" title={SECTION_LABEL.education} key="education" ghost={ghost.has('education')}>
           {data.education.map((e) => (
             <Entry
               key={e.id}
@@ -168,7 +177,7 @@ function ResumeDocument({ data, template, accent }) {
       ) : null,
     skills: () =>
       data.skills.length ? (
-        <Section id="skills" title={SECTION_LABEL.skills} key="skills">
+        <Section id="skills" title={SECTION_LABEL.skills} key="skills" ghost={ghost.has('skills')}>
           <ul className={data.skills.length > 14 ? 'rd-skills rd-skills-many' : 'rd-skills'}>
             {data.skills.map((s, i) => (
               // The space is a line-break opportunity. Without it the inline
@@ -183,7 +192,7 @@ function ResumeDocument({ data, template, accent }) {
       ) : null,
     certifications: () =>
       data.certifications.length ? (
-        <Section id="certifications" title={SECTION_LABEL.certifications} key="certifications">
+        <Section id="certifications" title={SECTION_LABEL.certifications} key="certifications" ghost={ghost.has('certifications')}>
           <ul className="rd-list">
             {data.certifications.map((cert, i) => (
               <li key={i}>{cert}</li>
@@ -193,7 +202,7 @@ function ResumeDocument({ data, template, accent }) {
       ) : null,
     languages: () =>
       (data.languages ?? []).length ? (
-        <Section id="languages" title={SECTION_LABEL.languages} key="languages">
+        <Section id="languages" title={SECTION_LABEL.languages} key="languages" ghost={ghost.has('languages')}>
           <ul className="rd-list">
             {data.languages.map((lang, i) => (
               <li key={i}>{lang}</li>

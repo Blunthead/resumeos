@@ -832,3 +832,8 @@
   border-bottom-color: #374151;
   color: color-mix(in srgb, var(--a) 45%, white);
 }
+
+/* Sample content in the live preview (never in the PDF). */
+.rd-ghost {
+  opacity: 0.38;
+}

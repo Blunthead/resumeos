@@ -1,21 +1,23 @@
 // accent: the template's signature colour (new resumes start with it).
 // layout: 'single' reads most reliably in job-portal parsers; 'sidebar' puts
 // contact, skills and education in a side panel and suits sending directly.
+// category, font and bestFor feed the template detail view. They describe what
+// each template really is; nothing here is a popularity figure.
 export const TEMPLATES = [
-  { id: 'modern', accent: '#3d5a80', name: 'Modern', layout: 'single', blurb: 'Clean sans-serif with a splash of colour.' },
-  { id: 'classic', accent: '#1f2937', name: 'Classic', layout: 'single', blurb: 'Traditional serif, centred header.' },
-  { id: 'minimal', accent: '#52606d', name: 'Minimal', layout: 'single', blurb: 'Light and airy, lots of whitespace.' },
-  { id: 'bold', accent: '#6d4553', name: 'Bold', layout: 'single', blurb: 'A confident colour header.' },
-  { id: 'compact', accent: '#3f6b66', name: 'Compact', layout: 'single', blurb: 'Fits more on one page.' },
-  { id: 'elegant', accent: '#8a6d3b', name: 'Elegant', layout: 'single', blurb: 'Refined serif headings with fine rules.' },
-  { id: 'executive', accent: '#3f5b45', name: 'Executive', layout: 'single', blurb: 'Authoritative, for senior roles.' },
-  { id: 'timeline', accent: '#5b5a7e', name: 'Timeline', layout: 'single', blurb: 'A clear line through your career.' },
-  { id: 'split', accent: '#8a5a3c', name: 'Split', layout: 'single', blurb: 'Name on the left, details on the right.' },
-  { id: 'tech', accent: '#5c6b3a', name: 'Tech', layout: 'single', blurb: 'A developer-friendly monospace touch.' },
-  { id: 'academic', accent: '#6b3a3a', name: 'Academic', layout: 'single', blurb: 'Formal and text-first, CV style.' },
-  { id: 'sidebar', accent: '#34495e', name: 'Sidebar', layout: 'sidebar', blurb: 'Bold colour panel on the side.' },
-  { id: 'sidebar-soft', accent: '#4a6572', name: 'Sidebar Soft', layout: 'sidebar', blurb: 'A gentle tinted side panel.' },
-  { id: 'sidebar-dark', accent: '#b8975a', name: 'Sidebar Dark', layout: 'sidebar', blurb: 'Deep navy panel, sharp contrast.' },
+  { id: 'modern', accent: '#3d5a80', name: 'Modern', layout: 'single', blurb: 'Clean sans-serif with a splash of colour.', category: 'Modern', font: 'Inter', bestFor: 'Most roles. A friendly, safe default.' },
+  { id: 'classic', accent: '#1f2937', name: 'Classic', layout: 'single', blurb: 'Traditional serif, centred header.', category: 'Classic', font: 'Source Serif 4', bestFor: 'Law, finance, public sector and traditional employers.' },
+  { id: 'minimal', accent: '#52606d', name: 'Minimal', layout: 'single', blurb: 'Light and airy, lots of whitespace.', category: 'Minimal', font: 'Inter', bestFor: 'People who like space and a quiet page.' },
+  { id: 'bold', accent: '#6d4553', name: 'Bold', layout: 'single', blurb: 'A confident colour header.', category: 'Creative', font: 'Inter', bestFor: 'Standing out in marketing, design and creative roles.' },
+  { id: 'compact', accent: '#3f6b66', name: 'Compact', layout: 'single', blurb: 'Fits more on one page.', category: 'Compact', font: 'Inter', bestFor: 'Long careers that need to fit on one page.' },
+  { id: 'elegant', accent: '#8a6d3b', name: 'Elegant', layout: 'single', blurb: 'Refined serif headings with fine rules.', category: 'Classic', font: 'Source Serif 4 headings, Inter text', bestFor: 'Consulting, publishing and senior roles.' },
+  { id: 'executive', accent: '#3f5b45', name: 'Executive', layout: 'single', blurb: 'Authoritative, for senior roles.', category: 'Professional', font: 'Source Serif 4', bestFor: 'Leadership and senior management.' },
+  { id: 'timeline', accent: '#5b5a7e', name: 'Timeline', layout: 'single', blurb: 'A clear line through your career.', category: 'Modern', font: 'Inter', bestFor: 'Showing steady progress through your career.' },
+  { id: 'split', accent: '#8a5a3c', name: 'Split', layout: 'single', blurb: 'Name on the left, details on the right.', category: 'Modern', font: 'Inter', bestFor: 'Short, focused resumes with a strong name.' },
+  { id: 'tech', accent: '#5c6b3a', name: 'Tech', layout: 'single', blurb: 'A developer-friendly monospace touch.', category: 'Technical', font: 'Inter with JetBrains Mono details', bestFor: 'Developers, engineers and data roles.' },
+  { id: 'academic', accent: '#6b3a3a', name: 'Academic', layout: 'single', blurb: 'Formal and text-first, CV style.', category: 'Classic', font: 'Source Serif 4', bestFor: 'Research, teaching and CV-style documents.' },
+  { id: 'sidebar', accent: '#34495e', name: 'Sidebar', layout: 'sidebar', blurb: 'Bold colour panel on the side.', category: 'Two column', font: 'Inter', bestFor: 'Emailing your resume straight to a person.' },
+  { id: 'sidebar-soft', accent: '#4a6572', name: 'Sidebar Soft', layout: 'sidebar', blurb: 'A gentle tinted side panel.', category: 'Two column', font: 'Inter', bestFor: 'A gentler look for emailing straight to a person.' },
+  { id: 'sidebar-dark', accent: '#b8975a', name: 'Sidebar Dark', layout: 'sidebar', blurb: 'Deep navy panel, sharp contrast.', category: 'Two column', font: 'Inter', bestFor: 'A strong first impression when sent directly.' },
 ]
 
 export const layoutOf = (templateId) => TEMPLATES.find((t) => t.id === templateId)?.layout ?? 'single'

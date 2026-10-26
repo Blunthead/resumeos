@@ -10,7 +10,8 @@ import { buildSteps } from '../components/editor/stepList.js'
 import { api } from '../lib/api.js'
 import { createHistory } from '../lib/history.js'
 import { handoff } from '../lib/handoff.js'
-import { SAMPLE, accentOf, isEmptyResume, normalizeData } from '../lib/resume.js'
+import { withSample } from '../lib/preview.js'
+import { accentOf, isEmptyResume, normalizeData } from '../lib/resume.js'
 import documentCss from '../components/resumeDocument.css?raw'
 
 const DEFAULT_TITLE = 'Untitled resume'
@@ -209,6 +210,35 @@ function Editor({ id }) {
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === activeKey))
   const currentKey = steps[stepIndex]?.key ?? 'contact'
 
+  // Sections already visited and left. Until then an empty section is shown
+  // with sample content in the preview (see lib/preview.js). Remembered per
+  // resume, so a section someone skipped on purpose stays empty on return.
+  const leftKey = `resumeos.left.${id}`
+  const [left, setLeft] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(leftKey) ?? '[]'))
+    } catch {
+      return new Set()
+    }
+  })
+  const lastKey = useRef(currentKey)
+  useEffect(() => {
+    const gone = lastKey.current
+    lastKey.current = currentKey
+    if (gone === currentKey) return
+    setLeft((prev) => {
+      if (prev.has(gone)) return prev
+      const next = new Set(prev).add(gone)
+      try {
+        localStorage.setItem(leftKey, JSON.stringify([...next]))
+      } catch {
+        // storage blocked: the samples simply come back next visit
+      }
+      return next
+    })
+  }, [currentKey, leftKey])
+  const shown = useMemo(() => (resume ? withSample(resume.data, left) : null), [resume, left])
+
   const syncHistory = () => {
     setCanUndo(history.current.canUndo)
     setCanRedo(history.current.canRedo)
@@ -323,13 +353,16 @@ function Editor({ id }) {
   }, [showStyle])
 
   async function download() {
-    const el = previewRef.current?.querySelector('.rd')
-    if (!el) return
     setDownloading(true)
     setDownloadError('')
     try {
       await save()
-      const html = `<style>${documentCss}</style>${el.outerHTML}`
+      // Drawn from the real data, not from what is on screen, so the grey sample
+      // content in the preview can never end up in the file.
+      const { renderToStaticMarkup } = await import('react-dom/server')
+      const html = `<style>${documentCss}</style>${renderToStaticMarkup(
+        <ResumeDocument data={resume.data} template={resume.template} accent={resume.accent} />,
+      )}`
       const name = resume.data.contact.fullName || resume.title.trim() || DEFAULT_TITLE
       const blob = await api.renderPdf(html, `${name} resume`)
       const url = URL.createObjectURL(blob)
@@ -348,7 +381,7 @@ function Editor({ id }) {
   // The form updates instantly; the preview may lag a frame behind while a
   // fast typist is mid-word, which keeps every keystroke responsive. (Called
   // before the early returns below, so every render runs the same hooks.)
-  const previewData = useDeferredValue(resume && !isEmptyResume(resume.data) ? resume.data : SAMPLE)
+  const preview = useDeferredValue(shown) ?? shown
 
   if (status === 'loading') {
     return (
@@ -521,12 +554,22 @@ function Editor({ id }) {
             {showSections && <SectionsPanel data={resume.data} onData={changeData} onOpen={openSection} />}
 
             <div key={current.key} className="rise" data-step-form>
-              <h1 className="text-2xl font-bold tracking-tight">{current.title}</h1>
-              <p className="mb-5 mt-1 text-slate-600">{current.hint}</p>
-              <StepForm data={resume.data} onData={changeData} onOpen={openSection} sectionId={current.sectionId} />
+              <div className="mb-4 flex items-center gap-3" aria-hidden="true">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-full rounded-full bg-blue-600 transition-[width] duration-500" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
+                </div>
+                <span className="whitespace-nowrap text-xs font-medium text-slate-600">
+                  Step {stepIndex + 1} of {steps.length}
+                </span>
+              </div>
+              <h1 className="text-[1.65rem] font-bold leading-tight tracking-tight text-slate-900">{current.heading ?? current.title}</h1>
+              <p className="mb-5 mt-1.5 text-slate-600">{current.hint}</p>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                <StepForm data={resume.data} onData={changeData} onOpen={openSection} sectionId={current.sectionId} />
+              </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between">
+            <div className="sticky bottom-0 -mx-5 mt-8 flex items-center justify-between border-t border-slate-200 bg-white/95 px-5 py-3 backdrop-blur">
               <button
                 type="button"
                 onClick={() => openSection(steps[Math.max(0, stepIndex - 1)].key)}
@@ -570,7 +613,9 @@ function Editor({ id }) {
         >
           <div className="mx-auto max-w-[46rem]">
             <p className="mb-3 text-center text-sm text-slate-600">
-              {empty ? 'This is a sample. Start typing and it becomes yours.' : 'Click any part of your resume to edit it.'}
+              {preview.ghost.size
+                ? "The faded parts are samples. They won't be in your PDF."
+                : 'Click any part of your resume to edit it.'}
             </p>
             {/* Marks the section being edited. It lives beside the preview, not
                 inside the document, so it never reaches the PDF. */}
@@ -584,7 +629,7 @@ function Editor({ id }) {
               className="rd-preview overflow-hidden rounded-lg shadow-lg ring-1 ring-slate-200"
             >
               <PaperPreview>
-                <ResumeDocument data={previewData} template={resume.template} accent={resume.accent} />
+                <ResumeDocument data={preview.data} ghost={preview.ghost} template={resume.template} accent={resume.accent} />
               </PaperPreview>
             </div>
           </div>

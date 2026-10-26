@@ -9,20 +9,31 @@ const inputCls =
 
 const LONG_MAX = 5000
 
-export function Field({ label, value, onChange, placeholder, type = 'text', hint, maxLength = 200 }) {
+// `valid` puts a green tick in the box once what was typed looks right, so
+// someone filling in a form can see they are on track without any message.
+export function Field({ label, value, onChange, placeholder, type = 'text', hint, maxLength = 200, valid = false }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        // Names and addresses are not necessarily left-to-right.
-        dir="auto"
-        className={inputCls}
-      />
+      <span className="relative block">
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          // Names and addresses are not necessarily left-to-right.
+          dir="auto"
+          className={`${inputCls} ${valid ? 'pr-10' : ''}`}
+        />
+        {valid && (
+          <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full bg-emerald-500 text-white">
+            <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m4.5 10.5 3.5 3.5 7.5-8" />
+            </svg>
+          </span>
+        )}
+      </span>
       {hint && <span className="mt-1 block text-xs text-slate-600">{hint}</span>}
     </label>
   )

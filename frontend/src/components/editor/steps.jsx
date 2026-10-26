@@ -42,19 +42,22 @@ function ListStep({ items, onItems, blank, addLabel, render, itemTitle, max = 30
   )
 }
 
+// A loose shape check, only to decide whether to show the green tick.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
 export function ContactStep({ data, onData }) {
   const c = data.contact
   const set = (key) => (value) => onData((d) => ({ ...d, contact: { ...d.contact, [key]: value } }))
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Full name" value={c.fullName} onChange={set('fullName')} placeholder="Alex Morgan" />
-      <Field label="Job title" value={c.jobTitle} onChange={set('jobTitle')} placeholder="Software Engineer" />
-      <Field label="Email" type="email" value={c.email} onChange={set('email')} placeholder="alex@example.com" />
-      <Field label="Phone" type="tel" value={c.phone} onChange={set('phone')} placeholder="+1 555 010 2030" />
-      <Field label="Location" value={c.location} onChange={set('location')} placeholder="City, Country" />
-      <Field label="Website" value={c.website} onChange={set('website')} placeholder="yoursite.com" />
+      <Field label="Full name" value={c.fullName} onChange={set('fullName')} placeholder="Alex Morgan" valid={c.fullName.trim().length >= 2} />
+      <Field label="Job title" value={c.jobTitle} onChange={set('jobTitle')} placeholder="Software Engineer" valid={c.jobTitle.trim().length >= 2} />
+      <Field label="Email" type="email" value={c.email} onChange={set('email')} placeholder="alex@example.com" valid={EMAIL.test(c.email.trim())} />
+      <Field label="Phone" type="tel" value={c.phone} onChange={set('phone')} placeholder="+1 555 010 2030" valid={c.phone.replace(/\D/g, '').length >= 7} />
+      <Field label="Location" value={c.location} onChange={set('location')} placeholder="City, Country" valid={c.location.trim().length >= 2} />
+      <Field label="Website" value={c.website} onChange={set('website')} placeholder="yoursite.com" valid={/\w\.\w/.test(c.website)} />
       <div className="sm:col-span-2">
-        <Field label="LinkedIn" value={c.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/you" />
+        <Field label="LinkedIn" value={c.linkedin} onChange={set('linkedin')} placeholder="linkedin.com/in/you" valid={/linkedin\.com\/\w/i.test(c.linkedin)} />
       </div>
     </div>
   )
