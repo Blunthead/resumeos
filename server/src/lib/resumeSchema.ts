@@ -123,6 +123,9 @@ export const resumeUpdateSchema = z.object({
 });
 
 export const resumeCreateSchema = z.object({
+    // The browser may choose the id, so the editor can open before the server
+    // has answered (the server may be waking up). Same shape as a Mongo ObjectId.
+    id: z.string().regex(/^[0-9a-f]{24}$/).optional(),
     title: z.string().trim().min(1).max(100).optional(),
     template: z.enum(TEMPLATE_IDS).default("modern"),
     accent: accent.default("#3d5a80"),

@@ -252,3 +252,30 @@ describe("custom sections over the API", () => {
         assert.deepEqual(data.style, { size: "md", spacing: "normal" });
     });
 });
+
+describe("a resume created with an id the browser chose", () => {
+    const ID = "0123456789abcdef01234567";
+    const make = (guest, id = ID) => create(guest, { id, template: "classic", accent: "#1f2937" });
+
+    test("is stored under that id, and asking again returns the same resume", async () => {
+        const first = await make(GUEST_A);
+        assert.equal(first.status, 201);
+        assert.equal(first.json._id, ID);
+        const again = await make(GUEST_A);
+        assert.equal(again.status, 200);
+        assert.equal(again.json._id, ID);
+        assert.equal((await call(`/api/resumes/${ID}`)).json.template, "classic");
+    });
+
+    test("an id already used by someone else is refused, and leaks nothing", async () => {
+        const { status, json } = await make(GUEST_B);
+        assert.equal(status, 409);
+        assert.equal(json.template, undefined);
+        assert.equal((await call(`/api/resumes/${ID}`, { guest: GUEST_B })).status, 404);
+    });
+
+    test("a malformed id is a 400", async () => {
+        assert.equal((await make(GUEST_A, "not-an-object-id")).status, 400);
+        assert.equal((await make(GUEST_A, "0123456789ABCDEF01234567")).status, 400);
+    });
+});

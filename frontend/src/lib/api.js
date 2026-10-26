@@ -86,7 +86,8 @@ export const api = {
   // preflight round trip.
   prime: () => request('/api/resumes').catch(() => {}),
   listResumes: () => request('/api/resumes'),
-  createResume: (body) => request('/api/resumes', { method: 'POST', body }),
+  // keepalive: leaving the page right after choosing a template must not cancel it.
+  createResume: (body) => request('/api/resumes', { method: 'POST', body, keepalive: true }),
   getResume: (id) => request(`/api/resumes/${id}`),
   updateResume: (id, body, { keepalive = false } = {}) =>
     request(`/api/resumes/${id}`, { method: 'PUT', body, keepalive }),

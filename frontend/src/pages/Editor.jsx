@@ -81,6 +81,7 @@ function Editor({ id }) {
   const [canRedo, setCanRedo] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState('')
+  const [createError, setCreateError] = useState('')
 
   const latest = useRef(resume)
   const dirty = useRef(false)
@@ -119,6 +120,17 @@ function Editor({ id }) {
     }
   }, [id, attempt])
 
+  // A resume made a moment ago may not exist on the server yet. If it never
+  // will (the limit of 25, no connection), say so now rather than at the first
+  // save, so nobody types a whole resume into something that cannot be kept.
+  useEffect(() => {
+    let cancelled = false
+    handoff.ready(id).catch((e) => !cancelled && setCreateError(e.message))
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
   // What the server stores. An emptied title is saved as the default rather
   // than rejected, so the field can be cleared and retyped freely.
   const payload = () => {
@@ -134,6 +146,8 @@ function Editor({ id }) {
       dirty.current = false
       setSaveState('saving')
       try {
+        await handoff.ready(id) // a brand-new resume may still be reaching the server
+        setCreateError('')
         await api.updateResume(id, payload())
         retry.current.count = 0
         setSaveState(dirty.current ? 'dirty' : 'saved')
@@ -434,6 +448,12 @@ function Editor({ id }) {
           {downloading ? 'Preparing…' : 'Download PDF'}
         </button>
       </header>
+
+      {createError && (
+        <p role="alert" className="bg-red-50 px-4 py-2 text-center text-sm text-red-700">
+          {createError} Your changes can't be saved yet.
+        </p>
+      )}
 
       {downloadError && (
         <p role="alert" className="bg-red-50 px-4 py-2 text-center text-sm text-red-700">

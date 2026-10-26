@@ -36,11 +36,23 @@ router.post("/", limitCreates, async (req, res) => {
         res.status(400).json({ error: "Invalid resume" });
         return;
     }
+    // Creating with an id the caller chose is idempotent: asking twice (a retry
+    // after a dropped connection) returns the resume made the first time. An id
+    // that belongs to someone else is refused without saying so.
+    if (parsed.data.id) {
+        const existing = await Resume.findById(parsed.data.id).lean();
+        if (existing) {
+            if (existing.owner === req.owner) res.status(200).json(existing);
+            else res.status(409).json({ error: "Couldn't create that resume" });
+            return;
+        }
+    }
     if ((await Resume.countDocuments({ owner: req.owner })) >= MAX_RESUMES) {
         res.status(409).json({ error: `You can keep up to ${MAX_RESUMES} resumes` });
         return;
     }
     const doc = await Resume.create({
+        ...(parsed.data.id ? { _id: parsed.data.id } : {}),
         owner: req.owner,
         title: parsed.data.title ?? "Untitled resume",
         template: parsed.data.template,

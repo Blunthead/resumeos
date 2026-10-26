@@ -5,9 +5,9 @@ import LazyPaper from '../components/LazyPaper.jsx'
 import PaperPreview from '../components/PaperPreview.jsx'
 import ResumeDocument from '../components/ResumeDocument.jsx'
 import { api } from '../lib/api.js'
-import { handoff } from '../lib/handoff.js'
+import { handoff, newResumeId } from '../lib/handoff.js'
 import { loadEditor, whenIdle } from '../lib/routes.js'
-import { SAMPLE, TEMPLATES } from '../lib/resume.js'
+import { SAMPLE, TEMPLATES, normalizeData } from '../lib/resume.js'
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -18,7 +18,6 @@ const FILTERS = [
 export default function Templates() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(null)
-  const [error, setError] = useState('')
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
@@ -35,20 +34,17 @@ export default function Templates() {
   // of clicks inside one frame would all still see "not busy".
   const creating = useRef(false)
 
-  async function choose(template) {
+  function choose(template) {
     if (creating.current) return
     creating.current = true
     setBusy(template.id)
-    setError('')
-    try {
-      const resume = await api.createResume({ template: template.id, accent: template.accent })
-      handoff.put(resume)
-      navigate(`/resumes/${resume._id}`)
-    } catch (e) {
-      setError(e.message)
-      setBusy(null)
-      creating.current = false
-    }
+    // Open the editor at once. The server may be asleep and take a minute to
+    // answer, and nothing the visitor does next needs it: the editor holds the
+    // new resume itself and its first save waits for the server (see Editor).
+    const id = newResumeId()
+    handoff.put({ _id: id, title: 'Untitled resume', template: template.id, accent: template.accent, data: normalizeData({}) })
+    handoff.start(id, () => api.createResume({ id, template: template.id, accent: template.accent }))
+    navigate(`/resumes/${id}`)
   }
 
   return (
@@ -82,12 +78,6 @@ export default function Templates() {
             </p>
           )}
         </div>
-
-        {error && (
-          <p role="alert" className="mx-auto mb-6 max-w-md rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">
-            {error}
-          </p>
-        )}
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((t, i) => (
