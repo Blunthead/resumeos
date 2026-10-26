@@ -49,7 +49,9 @@ export default function AppWindow() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-[300px_1fr]">
+      {/* minmax(0, 1fr), not 1fr or auto: those refuse to shrink below the paper's
+          fixed 794px width, which pushed the resume past the window on a phone. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] md:grid-cols-[300px_minmax(0,1fr)]">
         <div className="hidden border-r border-black/[0.06] bg-white p-6 md:block">
           <div className="flex flex-wrap gap-1.5">
             {STEPS.map((s, i) => (
