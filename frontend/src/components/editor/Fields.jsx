@@ -1,11 +1,11 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react'
-import { continueList, toggleList, toggleMark } from '../../lib/richEdit.js'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { fillEditor, markersFromDom, restoreSelection, saveSelection } from '../../lib/richDom.js'
 import { move } from '../../lib/sections.js'
 import { Chevron, Copy, Down, Grip, ListBullets, ListNumbers, Trash, Up } from './icons.jsx'
 import { dropEdge, useSortable } from './sortable.js'
 
 const inputCls =
-  'w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100'
+  'w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-base sm:text-[15px] text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100'
 
 const LONG_MAX = 5000
 
@@ -29,90 +29,132 @@ export function Field({ label, value, onChange, placeholder, type = 'text', hint
 }
 
 const toolBtn =
-  'grid h-8 min-w-8 place-items-center rounded-lg px-2 text-sm text-slate-700 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600'
+  'grid h-8 min-w-8 place-items-center rounded-lg px-2 text-sm pointer-coarse:h-10 pointer-coarse:min-w-10 text-slate-700 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600 aria-pressed:bg-blue-100 aria-pressed:text-blue-800'
 
-// A text area with a formatting toolbar. The formatting is plain markers in the
-// text (see lib/richText.js), so what the toolbar does is also what you could
-// type by hand, and nothing is lost if the markers are edited directly.
+const COMMANDS = [
+  { id: 'bold', label: 'Bold', hint: 'Bold (Ctrl+B)', cmd: 'bold', cls: 'font-bold', face: 'B' },
+  { id: 'italic', label: 'Italic', hint: 'Italic (Ctrl+I)', cmd: 'italic', cls: 'italic', face: 'I' },
+  { id: 'underline', label: 'Underline', hint: 'Underline (Ctrl+U)', cmd: 'underline', cls: 'underline', face: 'U' },
+  null,
+  { id: 'ul', label: 'Bulleted list', hint: 'Bulleted list', cmd: 'insertUnorderedList', icon: ListBullets },
+  { id: 'ol', label: 'Numbered list', hint: 'Numbered list', cmd: 'insertOrderedList', icon: ListNumbers },
+]
+
+// A text box with a formatting toolbar. What you see is what the resume gets:
+// bold looks bold, a bullet looks like a bullet. Underneath, the value is still
+// the plain marker text from lib/richText.js (`**b**`, `- item`), so saved
+// resumes, undo and the PDF all keep working, and the markers never show.
 export function RichTextArea({ label, value, onChange, placeholder, rows = 4, hint }) {
   const ref = useRef(null)
-  const pending = useRef(null)
+  const sent = useRef(null) // the last value this editor itself produced
   const hintId = useId()
-  const fieldId = useId()
+  const labelId = useId()
+  const [active, setActive] = useState({})
 
-  // The caret and selection are restored after React has applied the new value.
+  // Draws `value` into the editor, but only when it changed from outside (undo,
+  // redo, another template): redrawing our own edits would throw the caret away.
   useLayoutEffect(() => {
-    if (pending.current && ref.current) {
-      ref.current.focus()
-      ref.current.setSelectionRange(pending.current.start, pending.current.end)
-      pending.current = null
+    if (value !== sent.current && ref.current) {
+      fillEditor(ref.current, value)
+      sent.current = value
     }
+  }, [value])
+
+  // Which buttons are lit follows the caret.
+  function refreshActive() {
+    const el = ref.current
+    if (!el || !el.contains(document.getSelection()?.anchorNode ?? null)) return
+    const state = {}
+    for (const c of COMMANDS) if (c) state[c.id] = document.queryCommandState(c.cmd)
+    setActive(state)
+  }
+  useEffect(() => {
+    document.addEventListener('selectionchange', refreshActive)
+    return () => document.removeEventListener('selectionchange', refreshActive)
   })
 
-  function apply(edit) {
-    const el = ref.current
-    const next = edit(el.value, el.selectionStart, el.selectionEnd)
-    if (next.value.length > LONG_MAX) return
-    pending.current = { start: next.start, end: next.end }
-    onChange(next.value)
-  }
-
-  function onKeyDown(e) {
-    const mod = e.ctrlKey || e.metaKey
-    const key = e.key.toLowerCase()
-    if (mod && (key === 'b' || key === 'i' || key === 'u')) {
-      e.preventDefault()
-      const kind = { b: 'bold', i: 'italic', u: 'underline' }[key]
-      apply((v, s, en) => toggleMark(v, s, en, kind))
-    } else if (e.key === 'Enter' && !e.shiftKey && !mod && ref.current.selectionStart === ref.current.selectionEnd) {
-      const next = continueList(ref.current.value, ref.current.selectionStart)
-      if (next && next.value.length <= LONG_MAX) {
-        e.preventDefault()
-        pending.current = { start: next.start, end: next.end }
-        onChange(next.value)
-      }
+  function emit() {
+    const next = markersFromDom(ref.current)
+    if (next.length > LONG_MAX) {
+      // Too long: put back what was there rather than silently dropping text.
+      const at = saveSelection(ref.current)
+      fillEditor(ref.current, sent.current ?? '')
+      if (at) restoreSelection(ref.current, { anchor: Math.max(0, at.anchor - 1), focus: Math.max(0, at.focus - 1) })
+      return
     }
+    if (next === sent.current) return
+    sent.current = next
+    onChange(next)
   }
 
-  const keep = (e) => e.preventDefault() // keep focus and selection in the text area
+  function run(cmd) {
+    if (document.activeElement !== ref.current) ref.current.focus()
+    const saved = saveSelection(ref.current)
+    document.execCommand(cmd)
+    // Only put the caret back if the browser moved it: re-setting an unmoved
+    // caret would also cancel a bold the user switched on to type with.
+    const now = saveSelection(ref.current)
+    if (saved && (!now || now.anchor !== saved.anchor || now.focus !== saved.focus)) restoreSelection(ref.current, saved)
+    refreshActive()
+    emit()
+  }
+
+  // Pasted text goes in as plain text: no fonts, colours or links from a web
+  // page or a Word file. Lines that start with "-" or "1." become lists on the
+  // way back in, same as everywhere else.
+  function onPaste(e) {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n')
+    // Whatever fits; the rest is cut rather than the whole paste being refused.
+    document.execCommand('insertText', false, text.slice(0, Math.max(0, LONG_MAX - value.length)))
+  }
+
+  const keep = (e) => e.preventDefault() // keep focus and selection in the editor
   const near = value.length > LONG_MAX * 0.8
 
   return (
     <div>
-      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-slate-700">
+      <span id={labelId} className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
-      </label>
+      </span>
       <div className="rounded-xl border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
         <div role="toolbar" aria-label={`Formatting for ${label}`} className="flex items-center gap-0.5 border-b border-slate-200 px-1.5 py-1">
-          <button type="button" className={`${toolBtn} font-bold`} aria-label="Bold" title="Bold (Ctrl+B)" onMouseDown={keep} onClick={() => apply((v, s, e) => toggleMark(v, s, e, 'bold'))}>
-            B
-          </button>
-          <button type="button" className={`${toolBtn} italic`} aria-label="Italic" title="Italic (Ctrl+I)" onMouseDown={keep} onClick={() => apply((v, s, e) => toggleMark(v, s, e, 'italic'))}>
-            I
-          </button>
-          <button type="button" className={`${toolBtn} underline`} aria-label="Underline" title="Underline (Ctrl+U)" onMouseDown={keep} onClick={() => apply((v, s, e) => toggleMark(v, s, e, 'underline'))}>
-            U
-          </button>
-          <span className="mx-1 h-5 w-px bg-slate-200" aria-hidden />
-          <button type="button" className={toolBtn} aria-label="Bulleted list" title="Bulleted list" onMouseDown={keep} onClick={() => apply((v, s, e) => toggleList(v, s, e, 'bullet'))}>
-            <ListBullets />
-          </button>
-          <button type="button" className={toolBtn} aria-label="Numbered list" title="Numbered list" onMouseDown={keep} onClick={() => apply((v, s, e) => toggleList(v, s, e, 'number'))}>
-            <ListNumbers />
-          </button>
+          {COMMANDS.map((c, i) =>
+            c ? (
+              <button
+                key={c.id}
+                type="button"
+                className={`${toolBtn} ${c.cls ?? ''}`}
+                aria-label={c.label}
+                aria-pressed={Boolean(active[c.id])}
+                title={c.hint}
+                onMouseDown={keep}
+                onClick={() => run(c.cmd)}
+              >
+                {c.icon ? <c.icon /> : c.face}
+              </button>
+            ) : (
+              <span key={i} className="mx-1 h-5 w-px bg-slate-200" aria-hidden />
+            ),
+          )}
         </div>
-        <textarea
-          id={fieldId}
+        <div
           ref={ref}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={placeholder}
-          rows={rows}
-          maxLength={LONG_MAX}
-          dir="auto"
+          role="textbox"
+          aria-multiline="true"
+          aria-labelledby={labelId}
           aria-describedby={hintId}
-          className="block w-full resize-y rounded-b-xl bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-500 focus:outline-none"
+          contentEditable
+          suppressContentEditableWarning
+          spellCheck
+          dir="auto"
+          data-empty={value === ''}
+          data-placeholder={placeholder}
+          onInput={emit}
+          onPaste={onPaste}
+          onDrop={(e) => e.preventDefault()}
+          style={{ minHeight: `${rows * 1.625 + 1.25}em` }}
+          className="rich-editor block max-h-[60vh] w-full resize-y overflow-auto whitespace-pre-wrap break-words rounded-b-xl bg-transparent px-3.5 py-2.5 text-base sm:text-[15px] leading-relaxed text-slate-900 focus:outline-none"
         />
       </div>
       <div id={hintId} className="mt-1 flex justify-between gap-3 text-xs text-slate-600">

@@ -49,7 +49,7 @@ function nextMark(text, from) {
   return null
 }
 
-export function parseInline(text) {
+function parseRaw(text) {
   const nodes = []
   let at = 0
   while (at < text.length) {
@@ -57,13 +57,32 @@ export function parseInline(text) {
     if (!hit) break
     if (hit.start > at) nodes.push({ type: 'text', value: text.slice(at, hit.start) })
     const inner = text.slice(hit.start + hit.mark.open.length, hit.end)
-    const children = parseInline(inner)
+    const children = parseRaw(inner)
     // "***x***" is bold and italic at once.
     nodes.push(hit.mark.type === 'bi' ? { type: 'b', children: [{ type: 'i', children }] } : { type: hit.mark.type, children })
     at = hit.end + hit.mark.open.length
   }
   if (at < text.length) nodes.push({ type: 'text', value: text.slice(at) })
   return nodes
+}
+
+// A backslash makes the next marker character literal: \*, \+ and \.
+// The editor writes these when someone types a real asterisk or plus sign, so
+// "rated *very* high" is shown exactly as typed instead of turning italic.
+// While parsing, an escaped character is swapped for a private-use stand-in the
+// marker scanner cannot mistake for a marker, and swapped back in the text.
+const STAND_IN = { '*': '\uE001', '+': '\uE002', '\\': '\uE003' }
+const LITERAL = { '\uE001': '*', '\uE002': '+', '\uE003': '\\' }
+
+function restore(nodes) {
+  return nodes.map((n) =>
+    n.type === 'text' ? { ...n, value: n.value.replace(/[\uE001-\uE003]/g, (c) => LITERAL[c]) } : { ...n, children: restore(n.children) },
+  )
+}
+
+export function parseInline(text) {
+  const hidden = text.replace(/\\([*+\\])/g, (_, c) => STAND_IN[c])
+  return restore(parseRaw(hidden))
 }
 
 const BULLET = /^[-•–]\s+(.*)$|^\*\s+(.*)$/

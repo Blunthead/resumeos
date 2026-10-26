@@ -94,7 +94,7 @@ export default function SectionsPanel({ data, onData, onOpen }) {
             maxLength={60}
             disabled={full}
             placeholder={full ? `That's the maximum (${LIMITS.customSections})` : 'e.g. Awards'}
-            className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-[15px] placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+            className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-base sm:text-[15px] placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
           />
           <button
             type="submit"

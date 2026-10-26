@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseBlocks, parseInline, stripMarks } from '../src/lib/richText.js'
-import { toggleList, toggleMark } from '../src/lib/richEdit.js'
+import { markersFromDom } from '../src/lib/richDom.js'
 import { createHistory } from '../src/lib/history.js'
 import { NATIVE_SECTIONS, customKey, duplicate, move, resolveOrder } from '../src/lib/sections.js'
 import { blankCustomSection, normalizeData } from '../src/lib/resume.js'
@@ -69,46 +69,6 @@ describe('blocks', () => {
     assert.deepEqual(parseBlocks(''), [])
     assert.deepEqual(parseBlocks(undefined), [])
     assert.deepEqual(parseBlocks('\n\n  \n'), [])
-  })
-})
-
-describe('toolbar edits', () => {
-  test('wraps a selection, and a second toggle unwraps it', () => {
-    const a = toggleMark('make it bold', 8, 12, 'bold')
-    assert.equal(a.value, 'make it **bold**')
-    assert.equal(a.value.slice(a.start, a.end), 'bold')
-    const b = toggleMark(a.value, a.start, a.end, 'bold')
-    assert.equal(b.value, 'make it bold')
-  })
-
-  test('with nothing selected it drops an empty pair and puts the caret inside', () => {
-    const r = toggleMark('hi ', 3, 3, 'italic')
-    assert.equal(r.value, 'hi **')
-    assert.equal(r.start, 4)
-  })
-
-  test('italic inside bold is added, not mistaken for it', () => {
-    const bold = toggleMark('word', 0, 4, 'bold')
-    const both = toggleMark(bold.value, bold.start, bold.end, 'italic')
-    assert.equal(both.value, '***word***')
-    const off = toggleMark(both.value, both.start, both.end, 'italic')
-    assert.equal(off.value, '**word**')
-  })
-
-  test('bullets: add to every touched line, then remove', () => {
-    const on = toggleList('a\nb\nc', 0, 5, 'bullet')
-    assert.equal(on.value, '- a\n- b\n- c')
-    assert.equal(toggleList(on.value, on.start, on.end, 'bullet').value, 'a\nb\nc')
-  })
-
-  test('numbering counts up and replaces bullets', () => {
-    const r = toggleList('- a\n- b', 0, 7, 'number')
-    assert.equal(r.value, '1. a\n2. b')
-  })
-
-  test('only the lines the selection touches change', () => {
-    const r = toggleList('one\ntwo\nthree', 4, 6, 'bullet')
-    assert.equal(r.value, 'one\n- two\nthree')
   })
 })
 
@@ -207,37 +167,6 @@ describe('section order', () => {
   })
 })
 
-import { continueList } from '../src/lib/richEdit.js'
-
-describe('list continuation', () => {
-  test('Enter at the end of a bullet starts the next bullet', () => {
-    const v = '- one'
-    const r = continueList(v, v.length)
-    assert.equal(r.value, '- one\n- ')
-    assert.equal(r.start, r.value.length)
-  })
-
-  test('numbers count up', () => {
-    assert.equal(continueList('1. a\n2. b', 9).value, '1. a\n2. b\n3. ')
-  })
-
-  test('Enter on an empty item ends the list', () => {
-    const r = continueList('- a\n- ', 6)
-    assert.equal(r.value, '- a\n')
-    assert.equal(r.start, 4)
-  })
-
-  test('on a plain line it does nothing, so Enter behaves normally', () => {
-    assert.equal(continueList('just text', 9), null)
-    assert.equal(continueList('*italic* text', 13), null)
-  })
-
-  test('Enter in the middle of an item splits it', () => {
-    const r = continueList('- ab', 4 - 1)
-    assert.equal(r.value, '- a\n- b')
-  })
-})
-
 describe('combined and repeated marks', () => {
   test('*** is bold and italic at once', () => {
     const [b] = parseInline('***both***')
@@ -250,24 +179,64 @@ describe('combined and repeated marks', () => {
     const nodes = parseInline('**a** and *b*')
     assert.deepEqual(nodes.map((n) => n.type), ['b', 'text', 'i'])
   })
+})
 
-  test('pressing bold again at the end of bold text steps out of it', () => {
-    const first = toggleMark('hi ', 3, 3, 'bold')
-    assert.equal(first.value, 'hi ****')
-    const typed = 'hi **word**'
-    const out = toggleMark(typed, 9, 9, 'bold')
-    assert.equal(out.value, typed, 'text is unchanged')
-    assert.equal(out.start, 11, 'caret moves past the closing marker')
+// A minimal stand-in for the DOM: enough for markersFromDom, which reads only
+// node type, name, value, children and inline style.
+const t = (v) => ({ nodeType: 3, nodeName: '#text', nodeValue: v, childNodes: [] })
+const el = (name, children = [], style = {}) => ({ nodeType: 1, nodeName: name, childNodes: children, style })
+const root = (...children) => el('DIV', children)
+
+describe('editor to stored text', () => {
+  test('bold, italic and underline become markers', () => {
+    assert.equal(markersFromDom(root(el('DIV', [t('a '), el('B', [t('b')]), t(' '), el('I', [t('c')]), t(' '), el('U', [t('d')])]))), 'a **b** *c* ++d++')
   })
 
-  test('same for italic, and italic inside bold does not step out of the bold', () => {
-    assert.equal(toggleMark('a *it*', 5, 5, 'italic').start, 6)
-    const r = toggleMark('**word**', 6, 6, 'italic')
-    assert.equal(r.value, '**word****', 'opens an italic pair inside the bold instead of stepping out')
-    assert.equal(r.start, 7, 'with the caret between the new pair')
+  test('strong, em and inline styles count the same as b, i and u', () => {
+    assert.equal(markersFromDom(root(el('DIV', [el('STRONG', [t('x')]), t(' '), el('SPAN', [t('y')], { fontWeight: '700' }), t(' '), el('EM', [t('z')])]))), '**x** **y** *z*')
   })
 
-  test('with nothing selected and no marker after the caret it opens a pair', () => {
-    assert.equal(toggleMark('word ', 5, 5, 'bold').value, 'word ****')
+  test('nested marks stack: bold italic is ***', () => {
+    assert.equal(markersFromDom(root(el('DIV', [el('B', [el('I', [t('both')])])]))), '***both***')
+  })
+
+  test('spaces inside a mark move outside it so the markers still parse', () => {
+    const out = markersFromDom(root(el('DIV', [t('go'), el('B', [t(' bold ')]), t('on')])))
+    assert.equal(out, 'go **bold** on')
+    assert.equal(stripMarks(out), 'go bold on')
+  })
+
+  test('a mark around nothing but space vanishes', () => {
+    assert.equal(markersFromDom(root(el('DIV', [t('a'), el('B', [t(' ')]), t('b')]))), 'a b')
+  })
+
+  test('two runs the browser left side by side join up', () => {
+    assert.equal(markersFromDom(root(el('DIV', [el('B', [t('one')]), el('B', [t('two')])]))), '**onetwo**')
+  })
+
+  test('lists become "- " and "1. " lines', () => {
+    const out = markersFromDom(root(el('UL', [el('LI', [t('a')]), el('LI', [t('b')])]), el('OL', [el('LI', [t('c')]), el('LI', [t('d')])])))
+    assert.equal(out, '- a\n- b\n1. c\n2. d')
+  })
+
+  test('lines, empty lines and a bare first line', () => {
+    assert.equal(markersFromDom(root(t('first'), el('DIV', [t('second')]), el('DIV', [el('BR')]), el('DIV', [t('fourth')]))), 'first\nsecond\n\nfourth')
+  })
+
+  test('the placeholder <br> in an empty editor is no text at all', () => {
+    assert.equal(markersFromDom(root()), '')
+    assert.equal(markersFromDom(root(el('BR'))), '')
+    assert.equal(markersFromDom(root(el('DIV', [el('BR')]))), '')
+  })
+
+  test('non-breaking spaces become spaces and markup is only ever text', () => {
+    assert.equal(markersFromDom(root(el('DIV', [t('a\u00a0b <script>')]))), 'a b <script>')
+  })
+
+  test('what the editor stores reads back the same', () => {
+    const text = 'Led a **team of 5** to ship *fast*'
+    const dom = root(el('DIV', [t('Led a '), el('B', [t('team of 5')]), t(' to ship '), el('I', [t('fast')])]))
+    assert.equal(markersFromDom(dom), text)
+    assert.equal(stripMarks(text), 'Led a team of 5 to ship fast')
   })
 })
